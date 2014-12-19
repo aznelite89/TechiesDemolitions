@@ -59,15 +59,17 @@ public class RatioFinder extends Application {
         g.setFill(Color.TRANSPARENT);
         g.fillRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
 
+
         ImageView imageView = new ImageView(sampleScreen);
         BorderPane border = new BorderPane();
 
+        border.setBottom(addHBox());
         border.setBottom(addHBox());
         stackPane.getChildren().add(imageView);
         stackPane.getChildren().add(canvas);
 
         border.setCenter(stackPane);
-        imageView.setCursor(Cursor.CROSSHAIR);
+        canvas.setCursor(Cursor.CROSSHAIR);
 
 
         Scene scene = new Scene(border);
@@ -78,6 +80,10 @@ public class RatioFinder extends Application {
 
         canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, (MouseEvent e) -> {
             onPressed(e);
+        });
+
+        canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, (MouseEvent e) -> {
+            onDragged(e);
         });
 
         canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, (MouseEvent e) -> {
@@ -94,26 +100,42 @@ public class RatioFinder extends Application {
         oldY = e.getY();
     }
 
-
-    public void onReleased(MouseEvent e) {
+    public void onDragged(MouseEvent e) {
         g.setFill(Color.TRANSPARENT);
         g.setStroke(Color.WHITE);
         g.fillRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
         if (hasDrawn) {
             g.clearRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
         }
+        //Working
         if ((e.getX() - oldX) > 0 && (e.getY() - oldY) > 0) {
-            g.strokeRect(oldX, oldY, e.getX() - oldX, e.getY() - oldY);
+            if (e.isShiftDown()) {
+                double square = Math.sqrt((e.getX() - oldX) * (e.getX() - oldX) +
+                (e.getY() - oldY) * (e.getY() - oldY));
+                g.strokeRect(oldX, oldY, square, square);
+            } else {
+                g.strokeRect(oldX, oldY, e.getX() - oldX, e.getY() - oldY);
+            }
+
             double ratioX = oldX / sampleScreen.getWidth();
             double ratioY = oldY / sampleScreen.getHeight();
             double ratioW = (e.getX() - oldX) / sampleScreen.getWidth();
-            double ratioH = (e.getX() - oldX) / sampleScreen.getHeight();
+            double ratioH = (e.getY() - oldY) / sampleScreen.getHeight();
             textFieldX.setText(Double.toString(ratioX));
             textFieldY.setText(Double.toString(ratioY));
             textFieldW.setText(Double.toString(ratioW));
             textFieldH.setText(Double.toString(ratioH));
+
         } else if ((e.getX() - oldX) < 0 && (e.getY() - oldY) < 0) {
-            g.strokeRect(e.getX(), e.getY(), oldX - e.getX() , oldY - e.getY());
+
+            if (e.isShiftDown()) {
+                double a = oldX - e.getX();
+                double b = oldY - e.getY();
+                double minVal = (a < b) ? a : b;
+                g.strokeRect(e.getX(), e.getY(), minVal , minVal);
+            } else {
+                g.strokeRect(e.getX(), e.getY(), oldX - e.getX() , oldY - e.getY());
+            }
             double ratioX = e.getX() / sampleScreen.getWidth();
             double ratioY = e.getY() / sampleScreen.getHeight();
             double ratioW = (oldX - e.getX()) / sampleScreen.getWidth();
@@ -123,8 +145,13 @@ public class RatioFinder extends Application {
             textFieldW.setText(Double.toString(ratioW));
             textFieldH.setText(Double.toString(ratioH));
 
+        //Working
         } else if ((e.getX() - oldX) < 0 && (e.getY() - oldY) > 0) {
-            g.strokeRect(e.getX(), oldY, oldX - e.getX(), e.getY() - oldY);
+            if (e.isShiftDown()) {
+                g.strokeRect(e.getX(), oldY, oldX - e.getX(), oldX - e.getX());
+            } else {
+                g.strokeRect(e.getX(), oldY, oldX - e.getX(), e.getY() - oldY);
+            }
             double ratioX = e.getX() / sampleScreen.getWidth();
             double ratioY = oldY / sampleScreen.getHeight();
             double ratioW = (oldX - e.getX()) / sampleScreen.getWidth();
@@ -135,7 +162,12 @@ public class RatioFinder extends Application {
             textFieldH.setText(Double.toString(ratioH));
 
         } else if ((e.getX() - oldX) > 0 && (e.getY() - oldY) < 0) {
-            g.strokeRect(oldX, e.getY(), e.getX() - oldX, oldY - e.getY());
+            if (e.isShiftDown()) {
+                g.strokeRect(oldX, e.getY(), oldY - e.getY(), oldY - e.getY());
+            } else {
+                g.strokeRect(oldX, e.getY(), e.getX() - oldX, oldY - e.getY());
+            }
+
             double ratioX = oldX / sampleScreen.getWidth();
             double ratioY = e.getY() / sampleScreen.getHeight();
             double ratioW = (e.getX() - oldX) / sampleScreen.getWidth();
@@ -146,6 +178,10 @@ public class RatioFinder extends Application {
             textFieldH.setText(Double.toString(ratioH));
         }
         hasDrawn = true;
+    }
+
+    public void onReleased(MouseEvent e) {
+
     }
 
     private HBox addHBox() {
