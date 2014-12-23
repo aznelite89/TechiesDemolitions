@@ -38,12 +38,9 @@ public class RatioFinder extends Application {
     private double oldY;
     private GraphicsContext g;
     private Canvas canvas;
-    private double oldRectX;
-    private double oldRectY;
-    private double oldRectW;
-    private double oldRectH;
     private boolean hasDrawn = false;
-
+    private double ratioX, ratioY, ratioW, ratioH;
+    private double finalX = 0, finalY = 0, finalW = 0, finalH = 0;
     public static void main(String[] args) {
         Application.launch(args);
     }
@@ -63,7 +60,7 @@ public class RatioFinder extends Application {
         ImageView imageView = new ImageView(sampleScreen);
         BorderPane border = new BorderPane();
 
-        border.setBottom(addHBox());
+
         border.setBottom(addHBox());
         stackPane.getChildren().add(imageView);
         stackPane.getChildren().add(canvas);
@@ -74,7 +71,7 @@ public class RatioFinder extends Application {
 
         Scene scene = new Scene(border);
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        //primaryStage.setResizable(false);
         primaryStage.sizeToScene();
         primaryStage.show();
 
@@ -89,100 +86,132 @@ public class RatioFinder extends Application {
         canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, (MouseEvent e) -> {
             onReleased(e);
         });
+
     }
 
     public void onPressed(MouseEvent e) {
+        if (hasDrawn) {
+            g.clearRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
+        }
+
         double ratioX = e.getX() / sampleScreen.getWidth();
         double ratioY = e.getY() / sampleScreen.getHeight();
         textFieldX.setText(Double.toString(ratioX));
         textFieldY.setText(Double.toString(ratioY));
+        textFieldW.setText("0");
+        textFieldH.setText("0");
         oldX = e.getX();
         oldY = e.getY();
     }
 
     public void onDragged(MouseEvent e) {
-        g.setFill(Color.TRANSPARENT);
-        g.setStroke(Color.WHITE);
-        g.fillRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
+
         if (hasDrawn) {
             g.clearRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
         }
-        //Working
+
+        g.setFill(Color.TRANSPARENT);
+        g.setStroke(Color.WHITE);
+        g.fillRect(0, 0, sampleScreen.getWidth(), sampleScreen.getHeight());
+
         if ((e.getX() - oldX) > 0 && (e.getY() - oldY) > 0) {
             if (e.isShiftDown()) {
-                double square = Math.sqrt((e.getX() - oldX) * (e.getX() - oldX) +
-                (e.getY() - oldY) * (e.getY() - oldY));
-                g.strokeRect(oldX, oldY, square, square);
+                double a = e.getX() - oldX;
+                double b = e.getY() - oldY;
+                double minVal = (a < b) ? a : b;
+                finalX = oldX;
+                finalY = oldY;
+                finalW = minVal;
+                finalH = minVal;
             } else {
-                g.strokeRect(oldX, oldY, e.getX() - oldX, e.getY() - oldY);
+                finalX = oldX;
+                finalY = oldY;
+                finalW = e.getX() - oldX;
+                finalH = e.getY() - oldY;
             }
-
-            double ratioX = oldX / sampleScreen.getWidth();
-            double ratioY = oldY / sampleScreen.getHeight();
-            double ratioW = (e.getX() - oldX) / sampleScreen.getWidth();
-            double ratioH = (e.getY() - oldY) / sampleScreen.getHeight();
-            textFieldX.setText(Double.toString(ratioX));
-            textFieldY.setText(Double.toString(ratioY));
-            textFieldW.setText(Double.toString(ratioW));
-            textFieldH.setText(Double.toString(ratioH));
-
         } else if ((e.getX() - oldX) < 0 && (e.getY() - oldY) < 0) {
 
             if (e.isShiftDown()) {
                 double a = oldX - e.getX();
                 double b = oldY - e.getY();
                 double minVal = (a < b) ? a : b;
-                g.strokeRect(e.getX(), e.getY(), minVal , minVal);
+                finalX = oldX - minVal;
+                finalY = oldY - minVal;
+                finalW = minVal;
+                finalH = minVal;
             } else {
-                g.strokeRect(e.getX(), e.getY(), oldX - e.getX() , oldY - e.getY());
+                finalX = e.getX();
+                finalY = e.getY();
+                finalW = oldX - e.getX();
+                finalH = oldY - e.getY();
             }
-            double ratioX = e.getX() / sampleScreen.getWidth();
-            double ratioY = e.getY() / sampleScreen.getHeight();
-            double ratioW = (oldX - e.getX()) / sampleScreen.getWidth();
-            double ratioH = (oldY - e.getY()) / sampleScreen.getHeight();
-            textFieldX.setText(Double.toString(ratioX));
-            textFieldY.setText(Double.toString(ratioY));
-            textFieldW.setText(Double.toString(ratioW));
-            textFieldH.setText(Double.toString(ratioH));
 
         //Working
         } else if ((e.getX() - oldX) < 0 && (e.getY() - oldY) > 0) {
             if (e.isShiftDown()) {
-                g.strokeRect(e.getX(), oldY, oldX - e.getX(), oldX - e.getX());
+                double a = oldX - e.getX();
+                double b = e.getY() - oldY;
+                double minVal = (a < b) ? a : b;
+                finalX = oldX - minVal;
+                finalY = oldY;
+                finalW = minVal;
+                finalH = minVal;
             } else {
-                g.strokeRect(e.getX(), oldY, oldX - e.getX(), e.getY() - oldY);
+                finalX = e.getX();
+                finalY = oldY;
+                finalW = oldX - e.getX();
+                finalH = e.getY() - oldY;
             }
-            double ratioX = e.getX() / sampleScreen.getWidth();
-            double ratioY = oldY / sampleScreen.getHeight();
-            double ratioW = (oldX - e.getX()) / sampleScreen.getWidth();
-            double ratioH = (e.getY() - oldY) / sampleScreen.getHeight();
-            textFieldX.setText(Double.toString(ratioX));
-            textFieldY.setText(Double.toString(ratioY));
-            textFieldW.setText(Double.toString(ratioW));
-            textFieldH.setText(Double.toString(ratioH));
 
         } else if ((e.getX() - oldX) > 0 && (e.getY() - oldY) < 0) {
             if (e.isShiftDown()) {
-                g.strokeRect(oldX, e.getY(), oldY - e.getY(), oldY - e.getY());
+                double a = e.getX() - oldX;
+                double b = oldY - e.getY();
+                double minVal = (a < b) ? a : b;
+                finalX = oldX;
+                finalY = oldY - minVal;
+                finalW = minVal;
+                finalH = minVal;
             } else {
-                g.strokeRect(oldX, e.getY(), e.getX() - oldX, oldY - e.getY());
+                finalX = oldX;
+                finalY = e.getY();
+                finalW = e.getX() - oldX;
+                finalH = oldY - e.getY();
             }
+        }
 
-            double ratioX = oldX / sampleScreen.getWidth();
-            double ratioY = e.getY() / sampleScreen.getHeight();
-            double ratioW = (e.getX() - oldX) / sampleScreen.getWidth();
-            double ratioH = (oldY - e.getY()) / sampleScreen.getHeight();
+        if (finalX < 0) {
+            finalX = 0;
+        }
+        if ((finalX + finalW) > sampleScreen.getWidth()) {
+            finalW = sampleScreen.getWidth() - finalX;
+        }
+
+        if (finalY < 0) {
+            finalY = 0;
+        }
+        if ((finalY + finalH) > sampleScreen.getHeight()) {
+            finalH = sampleScreen.getHeight() - finalY;
+        }
+
+            ratioX = finalX / sampleScreen.getWidth();
+            ratioY = finalY / sampleScreen.getHeight();
+            ratioW = finalW / sampleScreen.getWidth();
+            ratioH = finalH / sampleScreen.getHeight();
             textFieldX.setText(Double.toString(ratioX));
             textFieldY.setText(Double.toString(ratioY));
             textFieldW.setText(Double.toString(ratioW));
             textFieldH.setText(Double.toString(ratioH));
-        }
+            g.strokeRect(finalX, finalY, finalW, finalH);
+
         hasDrawn = true;
     }
 
     public void onReleased(MouseEvent e) {
 
     }
+
+
 
     private HBox addHBox() {
         hbox = new HBox();
