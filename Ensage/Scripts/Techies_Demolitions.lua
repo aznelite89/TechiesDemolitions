@@ -261,10 +261,12 @@ function CalculateTechiesInformation()
                         heroInfoPanel[playerIconLocation].sentryIcon.visible = true
                     end
                 end
-                
-                if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
-                    SelfDetonate()
-                end
+
+                if heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired ~= nil then
+					if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
+						SelfDetonate(heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired)
+					end
+				end
             end
         end
     end
@@ -335,19 +337,24 @@ function numberOfBombsStepped(hero)
                     end
                 end
             else
-                return 0
+                return -1
             end
         end
     end
     return countBomb
 end
 
-function SelfDetonate()
+function SelfDetonate(bombNeeded)
     local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+	local count = 0
     for j,value in ipairs(mines) do
         if bombCountArray[value.handle] == true then
             bombCountArray[value.handle] = false
-            value:CastAbility(value:GetAbility(1))
+			if count < bombNeeded then
+				count = count + 1
+				value:CastAbility(value:GetAbility(1))
+				
+			end
         end
     end
 end
