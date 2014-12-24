@@ -1,5 +1,5 @@
 
---<<Techies_Demolitions script by Zanko version 2.1b>>
+--<<Techies_Demolitions script by Zanko version 2.2>>
 --[[
 
              _.-^^---....,,--
@@ -16,7 +16,7 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 2.1b ===========
+    =========== Version 2.2 ===========
      
     Description:
     ------------
@@ -24,13 +24,17 @@
     
     Changelog:
     ----------
-        Version 2.1b - 24th December 2014:
+        Version 2.2 - 24th December 2014 4:58PM :
+            - Added Toggle key for auto detonation
+            - Fixed bug regarding remote mines and land mines interaction
+            - Moved helper function EasyDraw to the top
+        Version 2.1b - 24th December 2014 10:38AM:
             - Clean duplications of code
             - Fixed bug of not able to initialize script
-        Version 2.1 - 24th December 2014:
+        Version 2.1 - 24th December 2014 01:38AM:
             - Added Self_Detonation Function (BETA)
             - Self Detonation now bomb minimum number of bombs (Efficient)
-        Version 2.0 - 23rd December 2014:
+        Version 2.0 - 23rd December 2014 07:12PM:
             - Added bomb visibility
             - Added bomb range
             - Added gem display to the hero panel
@@ -41,7 +45,7 @@
             - Push down the bomb information to avoid blocking the death timer
             - Script will now disabled if Techies is not picked
             - Put on GitHub
-        Version 1.0 - 6th December 2014:
+        Version 1.0 - 6th December 2014 10:28AM:
             - Added simple calculation for Techies land mines, remote mines and suicide.
 ]]--
 require("libs.ScriptConfig")
@@ -55,11 +59,23 @@ config:SetParameter("ShowRemoteMineRange", true)
 config:SetParameter("ShowMineVisibility", true)
 config:SetParameter("ShowGem", true)
 config:SetParameter("ShowSentry", true)
-config:SetParameter("AllowSelfDetonate", true)
+config:SetParameter("Active", 221, config.TYPE_HOTKEY) -- "]"
 config:Load()
 
+------- Helper Function -----------
+local screenResolution = client.screenSize
 
+function EasyCreateFont(name, fontname, tallRatio, weight)
+    return drawMgr:CreateFont(name, fontname, tallRatio * screenResolution.y, weight)
+end
 
+function EasyCreateText(xRatio, yRatio, color, text, font)
+    return drawMgr:CreateText(xRatio * screenResolution.x, yRatio * screenResolution.y, color, text, font)
+end
+
+function EasyCreateRect(xRatio, yRatio, wRatio, hRatio, color)
+    return drawMgr:CreateRect(xRatio * screenResolution.x, yRatio * screenResolution.y, wRatio * screenResolution.x, hRatio * screenResolution.y, color)
+end
 -------- Initialize Variables --------
 
 local landMineDamage = 0
@@ -71,8 +87,9 @@ local ShowRemoteMineRange = config.ShowRemoteMineRange
 local ShowMineVisibility = config.ShowMineVisibility
 local ShowGem = config.ShowGem
 local ShowSentry = config.ShowSentry
-local AllowSelfDetonate = config.AllowSelfDetonate
 
+local toggleCommand = config.Active
+local AllowSelfDetonate = true
 local heroInfoPanel = {}
 local upLandMine = false
 local upRemoteMine = false
@@ -81,18 +98,27 @@ local effect = {}
 local bombCountArray = {}
 effect.Range = {}
 effect.Visible = {}
-local screenResolution = client.screenSize
-local F10 = drawMgr:CreateFont("F10", "Arial", 0.0125 * screenResolution.y, 1)
+
+local F10 = EasyCreateFont("F10", "Arial", 0.0125, 1)
+local F11 = EasyCreateFont("F11", "Arial", 0.01274074074074074, 550 * screenResolution.x)
+local AllowSelfDetonateText  = EasyCreateText(0.0026041666666666665, 0.041666666666666664, -1, "", F11) 
+AllowSelfDetonateText.visible = false
 
 
 function Tick( tick )
 
     if not PlayingGame() or client.console or not SleepCheck("stop") then return end
     
-
     me = entityList:GetMyHero()
     enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
     mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+    
+    AllowSelfDetonateText.visible = true
+    if AllowSelfDetonate == false then
+        AllowSelfDetonateText.text = "( ] ) Auto Detonate: OFF"
+    else
+        AllowSelfDetonateText.text = "( ] ) Auto Detonate: ON"
+    end
     
     if not me or me.name ~= "npc_dota_hero_techies"  then
         print("This script is for Techies")
@@ -130,6 +156,15 @@ function Tick( tick )
                 MinesVisibility()
             end
             CalculateTechiesInformation()
+        end
+    end
+end
+
+function Key(msg,code)
+    if client.chat then return end
+    if msg == KEY_DOWN then
+        if code == toggleCommand then
+            AllowSelfDetonate = not AllowSelfDetonate
         end
     end
 end
@@ -315,7 +350,7 @@ function numberOfBombsStepped(hero)
     for j,value in ipairs(mines) do
         if value.team == me.team then
             if hero.team ~= me.team and hero.alive then
-                if value.alive then    
+                if value.alive and value.name == "npc_dota_techies_remote_mine" then    
                     check = isHeroInBombRange(hero.position.x, hero.position.y, value.position.x, value.position.y)
                     if check then
                         bombCountArray[value.handle] = true
@@ -337,7 +372,9 @@ function SelfDetonate(bombNeeded)
             bombCountArray[value.handle] = false
             if count < bombNeeded then
                 count = count + 1
-                value:CastAbility(value:GetAbility(1))
+                if value.name == "npc_dota_techies_remote_mine" then
+                    value:CastAbility(value:GetAbility(1))
+                end
                 
             end
         end
@@ -372,19 +409,10 @@ function GameClose()
     collectgarbage("collect")
 end
 
-function EasyCreateFont(name, fontname, tallRatio, weight)
-    return drawMgr:CreateFont(name, fontname, tallRatio * screenResolution.y, weight)
-end
 
-function EasyCreateText(xRatio, yRatio, color, text, font)
-    return drawMgr:CreateText(xRatio * screenResolution.x, yRatio * screenResolution.y, color, text, font)
-end
-
-function EasyCreateRect(xRatio, yRatio, wRatio, hRatio, color)
-    return drawMgr:CreateRect(xRatio * screenResolution.x, yRatio * screenResolution.y, wRatio * screenResolution.x, hRatio * screenResolution.y, color)
-end
 
 
 script:RegisterEvent(EVENT_TICK,Tick)
 script:RegisterEvent(EVENT_CLOSE,GameClose)
+script:RegisterEvent(EVENT_KEY,Key)
 
