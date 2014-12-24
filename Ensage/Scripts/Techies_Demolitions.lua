@@ -24,9 +24,9 @@
     
     Changelog:
     ----------
-		Version 2.1b - 24th December 2014:
-			- Clean duplications of code
-			- Fixed bug of not able to initialize script
+        Version 2.1b - 24th December 2014:
+            - Clean duplications of code
+            - Fixed bug of not able to initialize script
         Version 2.1 - 24th December 2014:
             - Added Self_Detonation Function (BETA)
             - Self Detonation now bomb minimum number of bombs (Efficient)
