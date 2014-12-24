@@ -1,5 +1,5 @@
 
---<<Techies_Demolitions script by Zanko version 2.0>>
+--<<Techies_Demolitions script by Zanko version 2.1b>>
 --[[
 
              _.-^^---....,,--
@@ -16,7 +16,7 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 2.1 ===========
+    =========== Version 2.1b ===========
      
     Description:
     ------------
@@ -24,6 +24,9 @@
     
     Changelog:
     ----------
+		Version 2.1b - 24th December 2014:
+			- Clean duplications of code
+			- Fixed bug of not able to initialize script
         Version 2.1 - 24th December 2014:
             - Added Self_Detonation Function (BETA)
             - Self Detonation now bomb minimum number of bombs (Efficient)
