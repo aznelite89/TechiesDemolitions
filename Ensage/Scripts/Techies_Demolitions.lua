@@ -75,6 +75,7 @@ local upLandMine = false
 local upRemoteMine = false
 local upSuicide = false
 local effect = {}
+local bombCountArray = {}
 effect.Range = {}
 effect.Visible = {}
 local screenResolution = client.screenSize
@@ -86,8 +87,9 @@ function Tick( tick )
     if not PlayingGame() or client.console or not SleepCheck("stop") then return end
     
 
-    local me = entityList:GetMyHero()
+    me = entityList:GetMyHero()
     enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
+    mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
     
     if not me or me.name ~= "npc_dota_hero_techies"  then
         print("This script is for Techies")
@@ -120,15 +122,17 @@ function Tick( tick )
         end
         
         if ShowMineRequired then
-            MinesRangeDisplay()
-            MinesVisibility()
+            if mines ~= nil then
+                MinesRangeDisplay()
+                MinesVisibility()
+            end
             CalculateTechiesInformation()
         end
     end
 end
 
 function CalculateTechiesInformation()
-    local me = entityList:GetMyHero()
+    
     local onRadiant = IsRadiant()
     local xSpacing = 0.034375
     local drawFromTopRatio = 0.070
@@ -140,64 +144,41 @@ function CalculateTechiesInformation()
             if uniqueIdentifier ~= me.handle then
                 if heroInfoPanel[playerIconLocation] == nil then 
                     heroInfoPanel[playerIconLocation] = {}
-                    if onRadiant and playerIconLocation < 5 then
-                        local xIconOrigin = 0.273958
-                        local xTextOrigin = 0.2842705
-                        heroInfoPanel[playerIconLocation].landMineIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation), drawFromTopRatio, 0.0078125, 0.01388, 0x00000095)
+                    if playerIconLocation < 5 then
+                        xIconOrigin = 0.273958
+                        xTextOrigin = 0.2842705
+                        playerOffset = 0
+                    elseif playerIconLocation > 4 then
+                        xIconOrigin = 0.5546875
+                        xTextOrigin = 0.565
+                        playerOffset = 5
+                    end
+                    if heroInfo.team ~= me.team then
+                        heroInfoPanel[playerIconLocation].landMineIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - playerOffset), drawFromTopRatio, 0.0078125, 0.01388, 0x00000095)
                         heroInfoPanel[playerIconLocation].landMineIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_land_mine")
                         heroInfoPanel[playerIconLocation].landMineIcon.visible = true
-                        heroInfoPanel[playerIconLocation].landMineText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation), drawFromTopRatio, -1, "", F10)
+                        heroInfoPanel[playerIconLocation].landMineText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation - playerOffset), drawFromTopRatio, -1, "", F10)
                         heroInfoPanel[playerIconLocation].landMineText.visible = false
                         
-                        heroInfoPanel[playerIconLocation].remoteMineIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation), drawFromTopRatio + 0.017, 0.0078125, 0.01388, 0x00000095)
+                        heroInfoPanel[playerIconLocation].remoteMineIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - playerOffset), drawFromTopRatio + 0.017, 0.0078125, 0.01388, 0x00000095)
                         heroInfoPanel[playerIconLocation].remoteMineIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_remote_mine")
                         heroInfoPanel[playerIconLocation].remoteMineIcon.visible = true
-                        heroInfoPanel[playerIconLocation].remoteMineText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation), drawFromTopRatio + 0.017, -1, "", F10)
+                        heroInfoPanel[playerIconLocation].remoteMineText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation - playerOffset), drawFromTopRatio + 0.017, -1, "", F10)
                         heroInfoPanel[playerIconLocation].remoteMineText.visible = false
                         
-                        heroInfoPanel[playerIconLocation].suicideIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation), drawFromTopRatio + 0.034, 0.0078125, 0.01388, 0x00000095)
+                        heroInfoPanel[playerIconLocation].suicideIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - playerOffset), drawFromTopRatio + 0.034, 0.0078125, 0.01388, 0x00000095)
                         heroInfoPanel[playerIconLocation].suicideIcon.textureId = drawMgr:GetTextureId("NyanUI/spellicons/techies_suicide")
                         heroInfoPanel[playerIconLocation].suicideIcon.visible = true
-                        heroInfoPanel[playerIconLocation].suicideText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation), drawFromTopRatio + 0.034, -1, "", F10)
+                        heroInfoPanel[playerIconLocation].suicideText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation - playerOffset), drawFromTopRatio + 0.034, -1, "", F10)
                         heroInfoPanel[playerIconLocation].suicideText.visible = false
                         
-                        heroInfoPanel[playerIconLocation].gemIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation), 0.0074, 0.0078125, 0.01388, 0x00000095)
+                        heroInfoPanel[playerIconLocation].gemIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - playerOffset), 0.0074, 0.0078125, 0.01388, 0x00000095)
                         heroInfoPanel[playerIconLocation].gemIcon.textureId = drawMgr:GetTextureId("NyanUI/other/O_gem")
                         heroInfoPanel[playerIconLocation].gemIcon.visible = false
                         
-                        heroInfoPanel[playerIconLocation].sentryIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation), 0.0074 + 0.015, 0.0078125, 0.01388, 0x00000095)
+                        heroInfoPanel[playerIconLocation].sentryIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - playerOffset), 0.0074 + 0.015, 0.0078125, 0.01388, 0x00000095)
                         heroInfoPanel[playerIconLocation].sentryIcon.textureId = drawMgr:GetTextureId("NyanUI/other/O_sentry")
                         heroInfoPanel[playerIconLocation].sentryIcon.visible = false
-                        
-                    elseif not onRadiant and playerIconLocation > 4 then
-                        local xIconOrigin = 0.5546875
-                        local xTextOrigin = 0.565
-                        heroInfoPanel[playerIconLocation].landMineIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - 5), drawFromTopRatio, 0.0078125, 0.01388, 0x00000095)
-                        heroInfoPanel[playerIconLocation].landMineIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_land_mine")
-                        heroInfoPanel[playerIconLocation].landMineIcon.visible = true
-                        heroInfoPanel[playerIconLocation].landMineText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation - 5), drawFromTopRatio, -1, "", F10)
-                        heroInfoPanel[playerIconLocation].landMineText.visible = false
-                        
-                        heroInfoPanel[playerIconLocation].remoteMineIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - 5), drawFromTopRatio + 0.017, 0.0078125, 0.01388, 0x00000095)
-                        heroInfoPanel[playerIconLocation].remoteMineIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_remote_mine")
-                        heroInfoPanel[playerIconLocation].remoteMineIcon.visible = true
-                        heroInfoPanel[playerIconLocation].remoteMineText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation - 5), drawFromTopRatio + 0.017, -1, "", F10)
-                        heroInfoPanel[playerIconLocation].remoteMineText.visible = false
-                        
-                        heroInfoPanel[playerIconLocation].suicideIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - 5), drawFromTopRatio + 0.034, 0.0078125, 0.01388, 0x00000095)
-                        heroInfoPanel[playerIconLocation].suicideIcon.textureId = drawMgr:GetTextureId("NyanUI/spellicons/techies_suicide")
-                        heroInfoPanel[playerIconLocation].suicideIcon.visible = true
-                        heroInfoPanel[playerIconLocation].suicideText = EasyCreateText(xTextOrigin + xSpacing * (playerIconLocation - 5), drawFromTopRatio + 0.034, -1, "", F10)
-                        heroInfoPanel[playerIconLocation].suicideText.visible = false
-                        
-                        heroInfoPanel[playerIconLocation].gemIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - 5), 0.0074, 0.0078125, 0.01388, 0x00000095)
-                        heroInfoPanel[playerIconLocation].gemIcon.textureId = drawMgr:GetTextureId("NyanUI/other/O_gem")
-                        heroInfoPanel[playerIconLocation].gemIcon.visible = false
-                        
-                        heroInfoPanel[playerIconLocation].sentryIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - 5), 0.0074 + 0.015, 0.0078125, 0.01388, 0x00000095)
-                        heroInfoPanel[playerIconLocation].sentryIcon.textureId = drawMgr:GetTextureId("NyanUI/other/O_sentry")
-                        heroInfoPanel[playerIconLocation].sentryIcon.visible = false
-                        
                     end
                 end
                 ------------------------------------------- CALCULATIONS -------------------------------------------
@@ -264,6 +245,7 @@ function CalculateTechiesInformation()
                 end
 
                 if heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired ~= nil then
+                    bombCountArray = {}
                     if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
                         SelfDetonate(heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired)
                     end
@@ -275,10 +257,11 @@ function CalculateTechiesInformation()
 end
 
 function MinesRangeDisplay()
-    local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
-    local me = entityList:GetMyHero()
     for i,v in ipairs(mines) do
-        if v.team == me.team then            
+        if v.team == me.team then     
+            if effect.Range == nil then
+                    effect.Range = {}
+            end
             if v.alive then    
                 if not effect.Range[v.handle] then
                     effect.Range[v.handle] = Effect(v,"range_display")
@@ -302,10 +285,11 @@ function MinesRangeDisplay()
 end
 
 function MinesVisibility()
-    local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
-    local me = entityList:GetMyHero()
     for i,v in ipairs(mines) do
-        if v.team == me.team then            
+        if v.team == me.team then
+            if effect.Visible == nil then
+                effect.Visible = {}
+            end
             if v.alive and v.visibleToEnemy then    
                 if not effect.Visible[v.handle] and ShowMineVisibility then
                     effect.Visible[v.handle] = Effect(v,"aura_shivas")
@@ -324,8 +308,6 @@ end
 
 
 function numberOfBombsStepped(hero)
-    local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
-    local me = entityList:GetMyHero()
     local countBomb = 0
     for j,value in ipairs(mines) do
         if value.team == me.team then
@@ -346,7 +328,6 @@ function numberOfBombsStepped(hero)
 end
 
 function SelfDetonate(bombNeeded)
-    local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
     local count = 0
     for j,value in ipairs(mines) do
         if bombCountArray[value.handle] == true then
@@ -369,7 +350,6 @@ function isHeroInBombRange(x, y, center_x, center_y)
 end
 
 function IsRadiant()
-    local me = entityList:GetMyHero()
     local teamIndicator = me.team
     if teamIndicator == 2 then -- If I'm on Radiant, true    
         return false
