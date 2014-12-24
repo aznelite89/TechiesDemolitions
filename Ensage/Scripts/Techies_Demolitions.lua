@@ -26,6 +26,7 @@
     ----------
         Version 2.1 - 24th December 2014:
             - Added Self_Detonation Function (BETA)
+            - Self Detonation now bomb minimum number of bombs (Efficient)
         Version 2.0 - 23rd December 2014:
             - Added bomb visibility
             - Added bomb range
@@ -263,10 +264,10 @@ function CalculateTechiesInformation()
                 end
 
                 if heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired ~= nil then
-					if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
-						SelfDetonate(heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired)
-					end
-				end
+                    if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
+                        SelfDetonate(heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired)
+                    end
+                end
             end
         end
     end
@@ -346,15 +347,15 @@ end
 
 function SelfDetonate(bombNeeded)
     local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
-	local count = 0
+    local count = 0
     for j,value in ipairs(mines) do
         if bombCountArray[value.handle] == true then
             bombCountArray[value.handle] = false
-			if count < bombNeeded then
-				count = count + 1
-				value:CastAbility(value:GetAbility(1))
-				
-			end
+            if count < bombNeeded then
+                count = count + 1
+                value:CastAbility(value:GetAbility(1))
+                
+            end
         end
     end
 end
