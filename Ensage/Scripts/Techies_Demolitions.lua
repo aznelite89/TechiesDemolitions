@@ -16,13 +16,16 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 2.0 ===========
+    =========== Version 2.1 ===========
      
     Description:
     ------------
         Useful information to plan your Techies strategies (Detailed information can be found in the forum images)
+    
     Changelog:
     ----------
+        Version 2.1 - 24th December 2014:
+            - Added Self_Detonation Function (BETA)
         Version 2.0 - 23rd December 2014:
             - Added bomb visibility
             - Added bomb range
@@ -35,7 +38,7 @@
             - Script will now disabled if Techies is not picked
             - Put on GitHub
         Version 1.0 - 6th December 2014:
-            Added simple calculation for Techies land mines, remote mines and suicide.
+            - Added simple calculation for Techies land mines, remote mines and suicide.
 ]]--
 require("libs.ScriptConfig")
 require("libs.Utils")
@@ -48,6 +51,7 @@ config:SetParameter("ShowRemoteMineRange", true)
 config:SetParameter("ShowMineVisibility", true)
 config:SetParameter("ShowGem", true)
 config:SetParameter("ShowSentry", true)
+config:SetParameter("AllowSelfDetonate", true)
 config:Load()
 
 
@@ -63,6 +67,7 @@ local ShowRemoteMineRange = config.ShowRemoteMineRange
 local ShowMineVisibility = config.ShowMineVisibility
 local ShowGem = config.ShowGem
 local ShowSentry = config.ShowSentry
+local AllowSelfDetonate = config.AllowSelfDetonate
 
 local heroInfoPanel = {}
 local upLandMine = false
@@ -256,6 +261,10 @@ function CalculateTechiesInformation()
                         heroInfoPanel[playerIconLocation].sentryIcon.visible = true
                     end
                 end
+                
+                if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
+                    SelfDetonate()
+                end
             end
         end
     end
@@ -307,6 +316,47 @@ function MinesVisibility()
             end
                 
         end
+    end
+end
+
+
+function numberOfBombsStepped(hero)
+    local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+    local me = entityList:GetMyHero()
+    local countBomb = 0
+    for j,value in ipairs(mines) do
+        if value.team == me.team then
+            if hero.team ~= me.team and hero.alive then
+                if value.alive then    
+                    check = isHeroInBombRange(hero.position.x, hero.position.y, value.position.x, value.position.y)
+                    if check then
+                        bombCountArray[value.handle] = true
+                        countBomb = countBomb + 1
+                    end
+                end
+            else
+                return 0
+            end
+        end
+    end
+    return countBomb
+end
+
+function SelfDetonate()
+    local mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+    for j,value in ipairs(mines) do
+        if bombCountArray[value.handle] == true then
+            bombCountArray[value.handle] = false
+            value:CastAbility(value:GetAbility(1))
+        end
+    end
+end
+
+function isHeroInBombRange(x, y, center_x, center_y)
+    if (math.pow((x - center_x),2) + math.pow((y - center_y), 2)) < math.pow(425, 2) then
+        return true
+    else
+        return false
     end
 end
 
