@@ -272,6 +272,8 @@ function CalculateTechiesInformation()
                     local gemCheck = heroInfo:FindItem("item_gem")
                     if gemCheck then
                         heroInfoPanel[playerIconLocation].gemIcon.visible = true
+					else
+						heroInfoPanel[playerIconLocation].gemIcon.visible = false
                     end
                 end
                 
@@ -279,6 +281,8 @@ function CalculateTechiesInformation()
                     local sentryCheck = heroInfo:FindItem("item_ward_sentry")
                     if sentryCheck then
                         heroInfoPanel[playerIconLocation].sentryIcon.visible = true
+					else
+						heroInfoPanel[playerIconLocation].sentryIcon.visible = false
                     end
                 end
 
