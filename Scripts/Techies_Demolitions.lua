@@ -1,5 +1,5 @@
 
---<<Techies_Demolitions script by Zanko version 2.2b>>
+--<<Techies_Demolitions script by Zanko version 2.3>>
 --[[
 
              _.-^^---....,,--
@@ -16,7 +16,7 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 2.2b ===========
+    =========== Version 2.3 ===========
      
     Description:
     ------------
@@ -24,6 +24,26 @@
     
     Changelog:
     ----------
+        Version 3.0 - 25th December 2014 12:10AM :
+            - Clean code
+            - Bomb will not auto detonate if the following modifier occurs 
+                - modifier_puck_phase_shift"
+                - modifier_storm_spirit_ball_lightning
+                - modifier_morphling_waveform
+                - modifier_brewmaster_primal_split
+                - modifier_ember_spirit_sleight_of_fist_caster
+                - modifier_phoenix_supernova_hiding
+                - modifier_oracle_false_promise
+                - modifier_phoenix_supernova_hiding
+                - modifier_faceless_void_time_walk
+                - modifier_faceless_void_time_walk_slow
+                - modifier_obsidian_destroyer_astral_imprisonment_prison
+                - modifier_shadow_demon_disruption
+                - modifier_abaddon_borrowed_time
+                - modifier_dazzle_shallow_grave
+                - modifier_eul_cyclone
+                - modifier_brewmaster_storm_cyclone
+                
         Version 2.2b - 24th December 2014 8:00PM :
             - Fixed sentry/gem display bug
             
@@ -178,7 +198,6 @@ end
 
 function CalculateTechiesInformation()
     
-    local onRadiant = IsRadiant()
     local xSpacing = 0.034375
     local drawFromTopRatio = 0.070
     for i = 1, #enemies do
@@ -227,7 +246,7 @@ function CalculateTechiesInformation()
                     end
                 end
                 ------------------------------------------- CALCULATIONS -------------------------------------------
-                
+               
                 if heroInfo.alive then
                     aliveFlag = 1
                 else
@@ -295,7 +314,7 @@ function CalculateTechiesInformation()
 
                 if heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired ~= nil then
                     bombCountArray = {}
-                    if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired then
+                    if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired and modifierTest(heroInfo) then
                         SelfDetonate(heroInfoPanel[playerIconLocation].numberOfRemoteMineRequired)
                     end
                 end
@@ -400,11 +419,25 @@ function isHeroInBombRange(x, y, center_x, center_y)
     end
 end
 
-function IsRadiant()
-    local teamIndicator = me.team
-    if teamIndicator == 2 then -- If I'm on Radiant, true    
+function modifierTest(hero)
+    if  hero:DoesHaveModifier("modifier_puck_phase_shift") or 
+        hero:DoesHaveModifier("modifier_storm_spirit_ball_lightning") or
+        hero:DoesHaveModifier("modifier_morphling_waveform") or
+        hero:DoesHaveModifier("modifier_brewmaster_primal_split") or 
+        hero:DoesHaveModifier("modifier_ember_spirit_sleight_of_fist_caster") or
+        hero:DoesHaveModifier("modifier_phoenix_supernova_hiding") or
+        hero:DoesHaveModifier("modifier_oracle_false_promise") or
+        hero:DoesHaveModifier("modifier_phoenix_supernova_hiding") or
+        hero:DoesHaveModifier("modifier_faceless_void_time_walk") or
+        hero:DoesHaveModifier("modifier_faceless_void_time_walk_slow") or
+        hero:DoesHaveModifier("modifier_obsidian_destroyer_astral_imprisonment_prison") or 
+        hero:DoesHaveModifier("modifier_shadow_demon_disruption") or 
+        hero:DoesHaveModifier("modifier_dazzle_shallow_grave") or 
+        hero:DoesHaveModifier("modifier_abaddon_borrowed_time") or
+        hero:DoesHaveModifier("modifier_eul_cyclone") or 
+        hero:DoesHaveModifier("modifier_brewmaster_storm_cyclone") then
         return false
-    elseif teamIndicator == 3 then -- If I'm not on Radiant, false
+    else
         return true
     end
 end
