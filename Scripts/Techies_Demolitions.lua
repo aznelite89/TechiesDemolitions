@@ -24,16 +24,22 @@
     
     Changelog:
     ----------
+        Version 2.2b - 24th December 2014 8:00PM :
+            - Fixed sentry/gem display bug
+            
         Version 2.2 - 24th December 2014 4:58PM :
             - Added Toggle key for auto detonation
             - Fixed bug regarding remote mines and land mines interaction
             - Moved helper function EasyDraw to the top
+            
         Version 2.1b - 24th December 2014 10:38AM:
             - Clean duplications of code
             - Fixed bug of not able to initialize script
+            
         Version 2.1 - 24th December 2014 01:38AM:
             - Added Self_Detonation Function (BETA)
             - Self Detonation now bomb minimum number of bombs (Efficient)
+            
         Version 2.0 - 23rd December 2014 07:12PM:
             - Added bomb visibility
             - Added bomb range
@@ -45,6 +51,7 @@
             - Push down the bomb information to avoid blocking the death timer
             - Script will now disabled if Techies is not picked
             - Put on GitHub
+            
         Version 1.0 - 6th December 2014 10:28AM:
             - Added simple calculation for Techies land mines, remote mines and suicide.
 ]]--
@@ -272,8 +279,8 @@ function CalculateTechiesInformation()
                     local gemCheck = heroInfo:FindItem("item_gem")
                     if gemCheck then
                         heroInfoPanel[playerIconLocation].gemIcon.visible = true
-					else
-						heroInfoPanel[playerIconLocation].gemIcon.visible = false
+                    else
+                        heroInfoPanel[playerIconLocation].gemIcon.visible = false
                     end
                 end
                 
@@ -281,8 +288,8 @@ function CalculateTechiesInformation()
                     local sentryCheck = heroInfo:FindItem("item_ward_sentry")
                     if sentryCheck then
                         heroInfoPanel[playerIconLocation].sentryIcon.visible = true
-					else
-						heroInfoPanel[playerIconLocation].sentryIcon.visible = false
+                    else
+                        heroInfoPanel[playerIconLocation].sentryIcon.visible = false
                     end
                 end
 
