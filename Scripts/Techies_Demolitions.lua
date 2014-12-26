@@ -24,11 +24,11 @@
     
     Changelog:
     ----------
-	Version 3.1 - 26th December 2014 5:55PM :
+    Version 3.1 - 26th December 2014 5:55PM :
         - Clean some code
-		- Update spell immunity/invulnerable list
-		- Change bomb display, if target cannot be killed then display "MAX" instead of "#INF/#INF"
-			
+        - Update spell immunity/invulnerable list
+        - Change bomb display, if target cannot be killed then display "MAX" instead of "#INF/#INF"
+            
     Version 3.0 - 25th December 2014 12:10AM :
         - Clean code
         - Bomb will not auto detonate if the following modifier occurs 
@@ -155,9 +155,9 @@ function Tick( tick )
         print("This script is for Techies")
         script:Disable()
     else
-		enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
-		mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
-		AllowSelfDetonateText.visible = true
+        enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
+        mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+        AllowSelfDetonateText.visible = true
         local scepterCheck = me:FindItem("item_ultimate_scepter")
         
         --Obtain Techies' Land Mines Damage
@@ -206,25 +206,25 @@ function CalculateTechiesInformation()
     
     local xSpacing = 0.034375
     local drawFromTopRatio = 0.070
-	local illusionCheck = true
-	local meepos = entityList:GetEntities({type = LuaEntity.TYPE_MEEPO})
-	
-	
+    local illusionCheck = true
+    local meepos = entityList:GetEntities({type = LuaEntity.TYPE_MEEPO})
+    
+    
     for i = 1, #enemies do
         local heroInfo = enemies[i]
-		if meepos ~= nil then
-			if heroInfo.name == "npc_dota_hero_meepo" then
-				if heroInfo.meepoIllusion then
-					illusionCheck = true
-				end
-				local meepoUlt = heroInfo:GetAbility(4)
-				heroInfo.meepoNumber = (meepoUlt:GetProperty("CDOTA_Ability_Meepo_DividedWeStand", "m_nWhichDividedWeStand") + 1)
-			else
-				heroInfo.meepoNumber = -1
-				illusionCheck = heroInfo.illusion
-			end
-		end
-		--print(illusionCheck)
+        if meepos ~= nil then
+            if heroInfo.name == "npc_dota_hero_meepo" then
+                if heroInfo.meepoIllusion then
+                    illusionCheck = true
+                end
+                local meepoUlt = heroInfo:GetAbility(4)
+                heroInfo.meepoNumber = (meepoUlt:GetProperty("CDOTA_Ability_Meepo_DividedWeStand", "m_nWhichDividedWeStand") + 1)
+            else
+                heroInfo.meepoNumber = -1
+                illusionCheck = heroInfo.illusion
+            end
+        end
+        --print(illusionCheck)
         if illusionCheck == false then
             local uniqueIdentifier = heroInfo.handle
             local playerIconLocation = heroInfo.playerId
@@ -289,17 +289,17 @@ function CalculateTechiesInformation()
                 
                 if upRemoteMine and remoteMineDamage ~= nil then
                     local remoteMineDamageDeal = (1 - heroInfo.magicDmgResist) * remoteMineDamage
-					local remoteMineString = ""
+                    local remoteMineString = ""
                     
-					if InvulnerableToRemoteMines(heroInfo) or heroInfo.magicDmgResist == 1 then
-						heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = math.ceil(heroInfo.health / 0) * aliveFlag
-						heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
-						remoteMineString = ("MAX")
-					else
-						heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = CalculateBombsRequired(heroInfo, remoteMineDamage, aliveFlag) 
-						heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
-						remoteMineString = tostring(heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired).." / "..tostring(heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired)
-					end
+                    if InvulnerableToRemoteMines(heroInfo) or heroInfo.magicDmgResist == 1 then
+                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = math.ceil(heroInfo.health / 0) * aliveFlag
+                        heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
+                        remoteMineString = ("MAX")
+                    else
+                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = CalculateBombsRequired(heroInfo, remoteMineDamage, aliveFlag) 
+                        heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
+                        remoteMineString = tostring(heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired).." / "..tostring(heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired)
+                    end
 
                     if heroInfoPanel[uniqueIdentifier].remoteMineText ~= nil then
                         heroInfoPanel[uniqueIdentifier].remoteMineText.text = remoteMineString
@@ -343,9 +343,9 @@ function CalculateTechiesInformation()
                         heroInfoPanel[uniqueIdentifier].sentryIcon.visible = false
                     end
                 end
-				--print(heroInfo:DoesHaveModifier("modifier_brewmaster_primal_split"))
+                --print(heroInfo:DoesHaveModifier("modifier_brewmaster_primal_split"))
                 if heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired ~= nil then
-					bombCountArray = {}
+                    bombCountArray = {}
                     if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired and not InvulnerableToRemoteMines(heroInfo) then
                         SelfDetonate(heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired)
                     end
@@ -359,22 +359,22 @@ end
 function MinesInformationDisplay()
     for i,v in ipairs(mines) do
         if v.team == me.team then
-			if bombInformationArray.Damage == nil then
-				bombInformationArray.Damage = {}
-			end
-			
-			if v.name == "npc_dota_techies_remote_mine" and bombInformationArray.Damage[v.handle] == nil then
-					if me:FindItem("item_ultimate_scepter") then
-						bombInformationArray.Damage[v.handle] = 150 * (me:GetAbility(6).level + 1) + 150
-					else 
-						bombInformationArray.Damage[v.handle] = 150 * (me:GetAbility(6).level + 1)
-					end
-			end
-			
+            if bombInformationArray.Damage == nil then
+                bombInformationArray.Damage = {}
+            end
+            
+            if v.name == "npc_dota_techies_remote_mine" and bombInformationArray.Damage[v.handle] == nil then
+                    if me:FindItem("item_ultimate_scepter") then
+                        bombInformationArray.Damage[v.handle] = 150 * (me:GetAbility(6).level + 1) + 150
+                    else 
+                        bombInformationArray.Damage[v.handle] = 150 * (me:GetAbility(6).level + 1)
+                    end
+            end
+            
             if effect.Range == nil then
                     effect.Range = {}
             end
-			if effect.Visible == nil then
+            if effect.Visible == nil then
                 effect.Visible = {}
             end
             if v.alive then    
@@ -394,7 +394,7 @@ function MinesInformationDisplay()
                     collectgarbage("collect")
                 end
             end
-			if v.alive and v.visibleToEnemy then    
+            if v.alive and v.visibleToEnemy then    
                 if not effect.Visible[v.handle] and ShowMineVisibility then
                     effect.Visible[v.handle] = Effect(v,"aura_shivas")
                     effect.Visible[v.handle]:SetVector(1, Vector(0,0,0) )
@@ -416,7 +416,7 @@ function numberOfBombsStepped(hero)
         if value.team == me.team then
             if hero.team ~= me.team and hero.alive then
                 if value.alive and value.name == "npc_dota_techies_remote_mine" then
-					--print(bombInformationArray.Damage[value.handle])
+                    --print(bombInformationArray.Damage[value.handle])
                     check = value.GetDistance2D(value, hero) < 425
                     if check then
                         bombCountArray[value.handle] = true
@@ -456,79 +456,79 @@ end
 end
 ]]
 function CalculateBombsRequired (hero, bombDamage, alive)
-	local remoteMineDamageDeal = (1 - hero.magicDmgResist) * bombDamage
-	--[[if hero:DoesHaveModifier("modifier_medusa_mana_shield") then
-		local medusaBlockArray = {1.6, 1.9, 2.2, 2.5}
-		local damagePerMana = medusaBlockArray[hero:GetAbility(3).level]
-		local bombCount = 0
-		local haveHP = true
-		local haveMP = true
-		while haveHP or haveMP do
-		remoteMineDamageDealToHP = (1 - hero.magicDmgResist) * bombDamage * 0.4 * bombCount
-		remoteMineDamageDealToMP = (bombDamage * 0.6) * bombCount / damagePerMana
-		hpLeft = hero.health - remoteMineDamageDealToHP
-		mpLeft = hero.health - remoteMineDamageDealToMP
-			if hpLeft < 0 then
-				haveHP = false
-			elseif mpLeft < 0 then
-				haveMP = false
-			else
-				bombCount = bombCount + 1
-			end
-		end
-		
-		if haveHP == false and haveMP == true then
-			return bombCount
-		elseif haveHP == true and haveMP == false then
-			return bombCount +  math.ceil(hpLeft / remoteMineDamageDeal)
-		else
-			return bombCount
-		end
-	end]]
-	
-	return math.ceil(hero.health / remoteMineDamageDeal) * alive
+    local remoteMineDamageDeal = (1 - hero.magicDmgResist) * bombDamage
+    --[[if hero:DoesHaveModifier("modifier_medusa_mana_shield") then
+        local medusaBlockArray = {1.6, 1.9, 2.2, 2.5}
+        local damagePerMana = medusaBlockArray[hero:GetAbility(3).level]
+        local bombCount = 0
+        local haveHP = true
+        local haveMP = true
+        while haveHP or haveMP do
+        remoteMineDamageDealToHP = (1 - hero.magicDmgResist) * bombDamage * 0.4 * bombCount
+        remoteMineDamageDealToMP = (bombDamage * 0.6) * bombCount / damagePerMana
+        hpLeft = hero.health - remoteMineDamageDealToHP
+        mpLeft = hero.health - remoteMineDamageDealToMP
+            if hpLeft < 0 then
+                haveHP = false
+            elseif mpLeft < 0 then
+                haveMP = false
+            else
+                bombCount = bombCount + 1
+            end
+        end
+        
+        if haveHP == false and haveMP == true then
+            return bombCount
+        elseif haveHP == true and haveMP == false then
+            return bombCount +  math.ceil(hpLeft / remoteMineDamageDeal)
+        else
+            return bombCount
+        end
+    end]]
+    
+    return math.ceil(hero.health / remoteMineDamageDeal) * alive
 end
 
 function InvulnerableToRemoteMines(hero)
     if  
-		---- Invulnerability granted by being hidden ----
-		hero:DoesHaveModifier("modifier_brewmaster_primal_split") or 
-		hero:DoesHaveModifier("modifier_ember_spirit_sleight_of_fist_caster") or
-		hero:DoesHaveModifier("modifier_juggernaut_omnislash") or
-		hero:DoesHaveModifier("modifier_juggernaut_omnislash_invulnerability") or
-		hero:DoesHaveModifier("modifier_life_stealer_infest") or
-		hero:DoesHaveModifier("modifier_phoenix_supernova_hiding") or
-		hero:DoesHaveModifier("modifier_puck_phase_shift") or
-		hero:DoesHaveModifier("modifier_tusk_snowball_movement") or
-		---- Invulnerability granted by disables ----
-		hero:DoesHaveModifier("modifier_bane_nightmare_invulnerable") or
-		hero:DoesHaveModifier("modifier_brewmaster_storm_cyclone") or
-		hero:DoesHaveModifier("modifier_eul_cyclone") or
-		hero:DoesHaveModifier("modifier_shadow_demon_disruption") or
-		hero:DoesHaveModifier("modifier_invoker_tornado") or
-		hero:DoesHaveModifier("modifier_obsidian_destroyer_astral_imprisonment_prison") or
-		---- Invulnerability granted by blink ----
-		hero:DoesHaveModifier("modifier_ember_spirit_fire_remnant") or
-		hero:DoesHaveModifier("modifier_faceless_void_time_walk") or
-		hero:DoesHaveModifier("modifier_morphling_waveform") or
-		hero:DoesHaveModifier("modifier_storm_spirit_ball_lightning") or
-		hero:DoesHaveModifier("modifier_rattletrap_hookshot") or -- not invulnerable but too fast to detonate
-		---- Invulnerability granted by spell ----
-		hero:DoesHaveModifier("modifier_medusa_stone_gaze") or
-		hero:DoesHaveModifier("modifier_naga_siren_song_of_the_siren") or
-		hero:DoesHaveModifier("modifier_oracle_false_promise") or
-		hero:DoesHaveModifier("modifier_dazzle_shallow_grave") or
-		hero:DoesHaveModifier("modifier_abaddon_borrowed_time") or
-		---- Invulnerability granted by mirror image ----
-		hero:DoesHaveModifier("modifier_chaos_knight_phantasm") or
-		hero:DoesHaveModifier("modifier_naga_siren_mirror_image") or
-		---- Spell Immunity ----
-		hero:DoesHaveModifier("modifier_huskar_life_break_charge") or
-		--hero:DoesHaveModifier("modifier_item_black_king_bar") or
-		hero:DoesHaveModifier("modifier_omniknight_repel") or
-		hero:DoesHaveModifier("modifier_life_stealer_rage") or
-		hero:DoesHaveModifier("modifier_juggernaut_blade_fury") or
-		hero:DoesHaveModifier("modifier_omniknight_repel") then
+        ---- Invulnerability granted by being hidden ----
+        hero:DoesHaveModifier("modifier_brewmaster_primal_split") or 
+        hero:DoesHaveModifier("modifier_ember_spirit_sleight_of_fist_caster") or
+        hero:DoesHaveModifier("modifier_juggernaut_omnislash") or
+        hero:DoesHaveModifier("modifier_juggernaut_omnislash_invulnerability") or
+        hero:DoesHaveModifier("modifier_life_stealer_infest") or
+        hero:DoesHaveModifier("modifier_phoenix_supernova_hiding") or
+        hero:DoesHaveModifier("modifier_puck_phase_shift") or
+        hero:DoesHaveModifier("modifier_tusk_snowball_movement") or
+        ---- Invulnerability granted by disables ----
+        hero:DoesHaveModifier("modifier_bane_nightmare_invulnerable") or
+        hero:DoesHaveModifier("modifier_brewmaster_storm_cyclone") or
+        hero:DoesHaveModifier("modifier_eul_cyclone") or
+        hero:DoesHaveModifier("modifier_shadow_demon_disruption") or
+        hero:DoesHaveModifier("modifier_invoker_tornado") or
+        hero:DoesHaveModifier("modifier_obsidian_destroyer_astral_imprisonment_prison") or
+        ---- Invulnerability granted by blink ----
+        hero:DoesHaveModifier("modifier_ember_spirit_fire_remnant") or
+        hero:DoesHaveModifier("modifier_faceless_void_time_walk") or
+        hero:DoesHaveModifier("modifier_morphling_waveform") or
+        hero:DoesHaveModifier("modifier_storm_spirit_ball_lightning") or
+        hero:DoesHaveModifier("modifier_rattletrap_hookshot") or -- not invulnerable but too fast to detonate
+        ---- Invulnerability granted by spell ----
+        hero:DoesHaveModifier("modifier_medusa_stone_gaze") or
+        hero:DoesHaveModifier("modifier_naga_siren_song_of_the_siren") or
+        hero:DoesHaveModifier("modifier_oracle_false_promise") or
+        hero:DoesHaveModifier("modifier_dazzle_shallow_grave") or
+        hero:DoesHaveModifier("modifier_abaddon_borrowed_time") or
+        ---- Invulnerability granted by mirror image ----
+        hero:DoesHaveModifier("modifier_chaos_knight_phantasm") or
+        hero:DoesHaveModifier("modifier_naga_siren_mirror_image") or
+        ---- Spell Immunity ----
+        hero:DoesHaveModifier("modifier_huskar_life_break_charge") or
+        --hero:DoesHaveModifier("modifier_item_black_king_bar") or
+        hero:DoesHaveModifier("modifier_omniknight_repel") or
+        hero:DoesHaveModifier("modifier_life_stealer_rage") or
+        hero:DoesHaveModifier("modifier_juggernaut_blade_fury") or
+        hero:DoesHaveModifier("modifier_omniknight_repel") then
         return true
     else
         return false
