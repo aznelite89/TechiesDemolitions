@@ -1,5 +1,5 @@
 
---<<Techies_Demolitions script by Zanko version 3.1>>
+--<<Techies_Demolitions script by Zanko version 3.2>>
 --[[
 
              _.-^^---....,,--
@@ -16,7 +16,7 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 3.1 ===========
+    =========== Version 3.2 ===========
      
     Description:
     ------------
@@ -24,6 +24,14 @@
     
     Changelog:
     ----------
+    Version 3.2 - 27th December 2014 1:11AM :
+        - Self detonation now works with meepo clone. Display GUI will only display for main meepo.
+        - Self detonation will now consider IO's Overcharge, Kunkka's Boat, Ember's Flame Gaurd, 
+              Abaddon's Shield, Medusa's Mana Shield, Spectre's Dispersion
+        - Self detonation will consider if the skill above are stacked together 
+             (Example, Ember can have 4 modifiers can it will calculate accordingly)
+        - Gui display for remote mine will display RequiredBomb(with or without buff)/ Max Bomb (Without Buff)
+        
     Version 3.1 - 26th December 2014 5:55PM :
         - Clean some code
         - Update spell immunity/invulnerable list
@@ -203,7 +211,6 @@ function Key(msg,code)
 end
 
 function CalculateTechiesInformation()
-    
     local xSpacing = 0.034375
     local drawFromTopRatio = 0.070
     local illusionCheck = true
@@ -212,6 +219,17 @@ function CalculateTechiesInformation()
     
     for i = 1, #enemies do
         local heroInfo = enemies[i]
+        if heroInfo.name == "npc_dota_hero_abaddon" and heroInfo.team ~= me.team then
+            abaddonBlockArray = {110, 140, 170, 200}
+            abaddonDamageBlocked = abaddonBlockArray[heroInfo:GetAbility(2).level]
+        end
+        if heroInfo.name == "npc_dota_hero_wisp" and heroInfo.team ~= me.team then
+            wispBlockArray = {0.05, 0.10, 0.15, 0.20}
+            wispPercentBlocked = wispBlockArray[heroInfo:GetAbility(4).level]
+        end
+        if heroInfo.name == "npc_dota_hero_treant" and heroInfo.team ~= me.team then
+        end
+
         if meepos ~= nil then
             if heroInfo.name == "npc_dota_hero_meepo" then
                 if heroInfo.meepoIllusion then
@@ -296,7 +314,7 @@ function CalculateTechiesInformation()
                         heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
                         remoteMineString = ("MAX")
                     else
-                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = CalculateBombsRequired(heroInfo, remoteMineDamage, aliveFlag) 
+                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = CalculateBombsRequired(heroInfo, remoteMineDamage, aliveFlag)
                         heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
                         remoteMineString = tostring(heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired).." / "..tostring(heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired)
                     end
@@ -456,37 +474,77 @@ end
 end
 ]]
 function CalculateBombsRequired (hero, bombDamage, alive)
-    local remoteMineDamageDeal = (1 - hero.magicDmgResist) * bombDamage
-    --[[if hero:DoesHaveModifier("modifier_medusa_mana_shield") then
+    local bombCount = 0
+    local heroHP = hero.health
+    local heroMP = hero.mana
+    local extraMagicPercentBlocked = 0
+    local finalPercentageBlocked = hero.magicDmgResist
+    if hero:DoesHaveModifier("modifier_kunkka_ghost_ship_damage_absorb") and hero.team ~= me.team then
+        heroHP = heroHP * 2
+    end
+    if hero:DoesHaveModifier("modifier_wisp_overcharge") and hero.team ~= me.team then
+        extraMagicPercentBlocked = extraMagicPercentBlocked + wispPercentBlocked
+        
+    end
+    if hero:DoesHaveModifier("modifier_abaddon_aphotic_shield") and hero.team ~= me.team then
+        heroHP = heroHP + abaddonDamageBlocked
+    end
+    if hero:DoesHaveModifier("modifier_ember_spirit_flame_guard") and hero.team ~= me.team then
+        local emberSpiritBlockArray = {50, 200, 350, 500}
+        local damageBlocked = emberSpiritBlockArray[hero:GetAbility(3).level]
+        local emberPercentageBlocked = hero.magicDmgResist
+        emberPercentageBlocked = emberPercentageBlocked + wispPercentBlocked - wispPercentBlocked * emberPercentageBlocked
+        heroHP = heroHP + damageBlocked * (1 - emberPercentageBlocked)
+    end
+    if hero.name == "npc_dota_hero_spectre" and hero.team ~= me.team then
+        local spectreBlockArray = {0.10, 0.14, 0.18, 0.22}
+        local percentageBlocked = spectreBlockArray[hero:GetAbility(3).level]
+        extraMagicPercentBlocked = extraMagicPercentBlocked + percentageBlocked
+        --finalPercentageBlocked = finalPercentageBlocked + percentageBlocked - percentageBlocked * finalPercentageBlocked
+    end
+    
+    
+    --print(finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked)
+    if hero:DoesHaveModifier("modifier_medusa_mana_shield") and hero.team ~= me.team then
+        
         local medusaBlockArray = {1.6, 1.9, 2.2, 2.5}
         local damagePerMana = medusaBlockArray[hero:GetAbility(3).level]
-        local bombCount = 0
         local haveHP = true
         local haveMP = true
-        while haveHP or haveMP do
-        remoteMineDamageDealToHP = (1 - hero.magicDmgResist) * bombDamage * 0.4 * bombCount
+        finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
+        while haveHP and haveMP do
+        
+        
+        remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage * 0.4 * bombCount
         remoteMineDamageDealToMP = (bombDamage * 0.6) * bombCount / damagePerMana
-        hpLeft = hero.health - remoteMineDamageDealToHP
-        mpLeft = hero.health - remoteMineDamageDealToMP
-            if hpLeft < 0 then
+        hpLeft = heroHP - remoteMineDamageDealToHP
+        mpLeft = heroMP - remoteMineDamageDealToMP
+            if hpLeft < 0 and mpLeft < 0 then -- HP depletes same time, MP doesn't matter
                 haveHP = false
-            elseif mpLeft < 0 then
                 haveMP = false
+            elseif mpLeft < 0 and hpLeft > 0 then --MP depletes first, MP matters
+                haveHP = true
+                haveMP = false
+            elseif mpLeft > 0 and hpLeft < 0 then -- HP depletes first, MP doesn't matter
+                haveHP = false
+                haveMP = true
             else
-                bombCount = bombCount + 1
+                bombCount = bombCount + 0.1
             end
         end
-        
-        if haveHP == false and haveMP == true then
-            return bombCount
-        elseif haveHP == true and haveMP == false then
-            return bombCount +  math.ceil(hpLeft / remoteMineDamageDeal)
+        --print(finalPercentageBlocked)
+        if haveHP == true and haveMP == false then
+            bombCount = math.ceil(bombCount + hpLeft / ((1 - finalPercentageBlocked) * bombDamage))
         else
-            return bombCount
+            bombCount = math.ceil(bombCount)
         end
-    end]]
+        return bombCount
+    else
+        finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
+        return math.ceil(heroHP / ((1 - finalPercentageBlocked) * bombDamage))
+    end
+
     
-    return math.ceil(hero.health / remoteMineDamageDeal) * alive
 end
 
 function InvulnerableToRemoteMines(hero)
@@ -545,9 +603,6 @@ function GameClose()
     effect = {}
     collectgarbage("collect")
 end
-
-
-
 
 script:RegisterEvent(EVENT_TICK,Tick)
 script:RegisterEvent(EVENT_CLOSE,GameClose)
