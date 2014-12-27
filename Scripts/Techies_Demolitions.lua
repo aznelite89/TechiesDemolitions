@@ -1,5 +1,5 @@
 
---<<Techies_Demolitions script by Zanko version 3.2>>
+--<<Techies_Demolitions script by Zanko version 3.3>>
 --[[
 
              _.-^^---....,,--
@@ -16,7 +16,7 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 3.2 ===========
+    =========== Version 3.3 ===========
      
     Description:
     ------------
@@ -24,13 +24,33 @@
     
     Changelog:
     ----------
+    Version 3.3 - 27th December 2014 2:18PM :
+        - Removed print statement that causes script to crash
+        - Changed comparing hero name string to class ID for efficiency
+        - Self detonation will now consider damage amplification
+            - modifier_undying_flesh_golem_plague_aura (Using linear function)
+            - modifier_shadow_demon_soul_catcher
+            - modifier_chen_penitence
+            - modifier_slardar_sprint
+            - modifier_bloodseeker_bloodrage
+            - modifier_item_mask_of_madness_berserk
+        - Self detonation will now consider damage reduction of stack form
+            - Templar assassin refraction (Track cool down, assume maximum charge if on cool down)
+            - modifier_treant_living_armor
+            - modifier_visage_gravekeepers_cloak
+            
     Version 3.2 - 27th December 2014 1:11AM :
         - Self detonation now works with meepo clone. Display GUI will only display for main meepo.
-        - Self detonation will now consider IO's Overcharge, Kunkka's Boat, Ember's Flame Gaurd, 
-              Abaddon's Shield, Medusa's Mana Shield, Spectre's Dispersion
+        - Self detonation will now consider 
+            - modifier_wisp_overcharge
+            - modifier_abaddon_aphotic_shield
+            - Spectre's Dispersion
+            - modifier_medusa_mana_shield
+            - modifier_kunkka_ghost_ship_damage_absorb
+            - modifier_ember_spirit_flame_guard
         - Self detonation will consider if the skill above are stacked together 
              (Example, Ember can have 4 modifiers can it will calculate accordingly)
-        - Gui display for remote mine will display RequiredBomb(with or without buff)/ Max Bomb (Without Buff)
+        - GUI display for remote mine will display RequiredBomb(with or without buff)/ Max Bomb (Without Buff)
         
     Version 3.1 - 26th December 2014 5:55PM :
         - Clean some code
@@ -152,6 +172,7 @@ function Tick( tick )
     if not PlayingGame() or client.console or not SleepCheck("stop") then return end
     
     me = entityList:GetMyHero()
+    local ID = me.classId
 
     if AllowSelfDetonate == false then
         AllowSelfDetonateText.text = "( ] ) Auto Detonate: OFF"
@@ -159,7 +180,7 @@ function Tick( tick )
         AllowSelfDetonateText.text = "( ] ) Auto Detonate: ON"
     end
     
-    if not me or me.name ~= "npc_dota_hero_techies"  then
+    if not me or ID ~= CDOTA_Unit_Hero_Techies  then
         print("This script is for Techies")
         script:Disable()
     else
@@ -219,19 +240,56 @@ function CalculateTechiesInformation()
     
     for i = 1, #enemies do
         local heroInfo = enemies[i]
-        if heroInfo.name == "npc_dota_hero_abaddon" and heroInfo.team ~= me.team then
+        local ID = heroInfo.classId
+        
+        if ID == CDOTA_Unit_Hero_Undying and heroInfo.team == me.team then
+            undying = heroInfo
+            if heroInfo:FindItem("item_ultimate_scepter") then
+                undyingMinAmplificationArray = {0.15, 0.20, 0.25}
+                undyingMaxAmplificationArray = {0.30, 0.35, 0.40}
+            else
+                undyingMinAmplificationArray = {0.05, 0.10, 0.15}
+                undyingMaxAmplificationArray = {0.20, 0.25, 0.30}
+            end
+            undyingMinPercentAmplified = undyingMinAmplificationArray[heroInfo:GetAbility(4).level]
+            undyingMaxPercentAmplified = undyingMaxAmplificationArray[heroInfo:GetAbility(4).level]
+        end
+        
+        if ID == CDOTA_Unit_Hero_Shadow_Demon and heroInfo.team == me.team then
+            demonAmplificationArray = {0.20, 0.30, 0.40, 0.50}
+            demonPercentAmplified = demonAmplificationArray[heroInfo:GetAbility(2).level]
+        end
+        
+        if ID == CDOTA_Unit_Hero_Treant and heroInfo.team ~= me.team then
+            treantInstanceBlockArray = {4, 5, 6, 7}
+            treantDamageBlockArray = {20, 40, 60, 80}
+            treantInstanceBlocked = treantInstanceBlockArray[heroInfo:GetAbility(3).level]
+            treantDamageBlocked = treantDamageBlockArray[heroInfo:GetAbility(3).level]
+        end
+        
+        if ID == CDOTA_Unit_Hero_Bloodseeker then
+            bloodseekerAmplificationArray = {0.25, 0.30, 0.35, 0.40}
+            bloodseekerPercentAmplified = bloodseekerAmplificationArray[heroInfo:GetAbility(1).level]
+        end
+        
+        if ID == CDOTA_Unit_Hero_Chen and heroInfo.team == me.team then
+            chenAmplificationArray = {0.14, 0.18, 0.22, 0.26}
+            chenPercentAmplified = chenAmplificationArray[heroInfo:GetAbility(1).level]
+        end
+        if ID == CDOTA_Unit_Hero_Abaddon and heroInfo.team ~= me.team then
             abaddonBlockArray = {110, 140, 170, 200}
             abaddonDamageBlocked = abaddonBlockArray[heroInfo:GetAbility(2).level]
         end
-        if heroInfo.name == "npc_dota_hero_wisp" and heroInfo.team ~= me.team then
+        
+
+        if ID == CDOTA_Unit_Hero_Wisp and heroInfo.team ~= me.team then
             wispBlockArray = {0.05, 0.10, 0.15, 0.20}
             wispPercentBlocked = wispBlockArray[heroInfo:GetAbility(4).level]
         end
-        if heroInfo.name == "npc_dota_hero_treant" and heroInfo.team ~= me.team then
-        end
+
 
         if meepos ~= nil then
-            if heroInfo.name == "npc_dota_hero_meepo" then
+            if ID == CDOTA_Unit_Hero_Meepo then
                 if heroInfo.meepoIllusion then
                     illusionCheck = true
                 end
@@ -242,7 +300,6 @@ function CalculateTechiesInformation()
                 illusionCheck = heroInfo.illusion
             end
         end
-        --print(illusionCheck)
         if illusionCheck == false then
             local uniqueIdentifier = heroInfo.handle
             local playerIconLocation = heroInfo.playerId
@@ -361,7 +418,6 @@ function CalculateTechiesInformation()
                         heroInfoPanel[uniqueIdentifier].sentryIcon.visible = false
                     end
                 end
-                --print(heroInfo:DoesHaveModifier("modifier_brewmaster_primal_split"))
                 if heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired ~= nil then
                     bombCountArray = {}
                     if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired and not InvulnerableToRemoteMines(heroInfo) then
@@ -434,7 +490,6 @@ function numberOfBombsStepped(hero)
         if value.team == me.team then
             if hero.team ~= me.team and hero.alive then
                 if value.alive and value.name == "npc_dota_techies_remote_mine" then
-                    --print(bombInformationArray.Damage[value.handle])
                     check = value.GetDistance2D(value, hero) < 425
                     if check then
                         bombCountArray[value.handle] = true
@@ -474,21 +529,66 @@ end
 end
 ]]
 function CalculateBombsRequired (hero, bombDamage, alive)
-    local bombCount = 0
+
     local heroHP = hero.health
     local heroMP = hero.mana
     local extraMagicPercentBlocked = 0
     local finalPercentageBlocked = hero.magicDmgResist
+    ---- Damage Amplification ----
+    if hero:DoesHaveModifier("modifier_undying_flesh_golem_plague_aura") and hero.team ~= me.team then
+    
+        local y1 = undyingMaxPercentAmplified
+        local y2 = undyingMinPercentAmplified
+        local x1 = 200
+        local x2 = 750
+    if hero.GetDistance2D(undying, hero) > 750 then
+        undyingPercentAmplified = undyingMinPercentAmplified
+    elseif hero.GetDistance2D(undying, hero) < 200 then
+        undyingPercentAmplified = undyingMaxPercentAmplified
+    else 
+        undyingPercentAmplified = y1 +((y2 - y1)/(x2 - x1)) * (hero.GetDistance2D(undying, hero) -x1)
+    end
+        extraMagicPercentBlocked = extraMagicPercentBlocked - undyingPercentAmplified
+    end
+    
+    if hero:DoesHaveModifier("modifier_shadow_demon_soul_catcher") and hero.team ~= me.team then
+        extraMagicPercentBlocked = extraMagicPercentBlocked - demonPercentAmplified
+    end
+    
+    if hero:DoesHaveModifier("modifier_chen_penitence") and hero.team ~= me.team then
+        extraMagicPercentBlocked = extraMagicPercentBlocked - chenPercentAmplified
+    end
+    
+    if hero:DoesHaveModifier("modifier_slardar_sprint") and hero.team ~= me.team then
+        extraMagicPercentBlocked = extraMagicPercentBlocked - 0.15
+    end
+    
+    if hero:DoesHaveModifier("modifier_bloodseeker_bloodrage") and hero.team ~= me.team then
+        
+        extraMagicPercentBlocked = extraMagicPercentBlocked - bloodseekerPercentAmplified
+    end
+    
+    if hero:DoesHaveModifier("modifier_item_mask_of_madness_berserk") and hero.team ~= me.team then
+        extraMagicPercentBlocked = extraMagicPercentBlocked - 0.3
+    end
+    
+
+    
+    ---- Damage Reduction ----
     if hero:DoesHaveModifier("modifier_kunkka_ghost_ship_damage_absorb") and hero.team ~= me.team then
         heroHP = heroHP * 2
     end
+    
     if hero:DoesHaveModifier("modifier_wisp_overcharge") and hero.team ~= me.team then
         extraMagicPercentBlocked = extraMagicPercentBlocked + wispPercentBlocked
         
     end
+    
+    
     if hero:DoesHaveModifier("modifier_abaddon_aphotic_shield") and hero.team ~= me.team then
         heroHP = heroHP + abaddonDamageBlocked
     end
+    
     if hero:DoesHaveModifier("modifier_ember_spirit_flame_guard") and hero.team ~= me.team then
         local emberSpiritBlockArray = {50, 200, 350, 500}
         local damageBlocked = emberSpiritBlockArray[hero:GetAbility(3).level]
@@ -500,54 +600,198 @@ function CalculateBombsRequired (hero, bombDamage, alive)
         local spectreBlockArray = {0.10, 0.14, 0.18, 0.22}
         local percentageBlocked = spectreBlockArray[hero:GetAbility(3).level]
         extraMagicPercentBlocked = extraMagicPercentBlocked + percentageBlocked
-        --finalPercentageBlocked = finalPercentageBlocked + percentageBlocked - percentageBlocked * finalPercentageBlocked
     end
-    
-    
-    --print(finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked)
+
+    if hero.classId == CDOTA_Unit_Hero_TemplarAssassin then
+        local templarBlockArray = {3, 4, 5, 6}
+        local instanceBlocked = templarBlockArray[hero:GetAbility(1).level]
+        finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
+        templarSpellReadyCheck = hero:GetAbility(1).cd == 0
+        if templarSpellReadyCheck == false then
+            heroHP = heroHP + (1 - finalPercentageBlocked) * bombDamage * instanceBlocked
+        end
+    end
     if hero:DoesHaveModifier("modifier_medusa_mana_shield") and hero.team ~= me.team then
         
         local medusaBlockArray = {1.6, 1.9, 2.2, 2.5}
         local damagePerMana = medusaBlockArray[hero:GetAbility(3).level]
         local haveHP = true
         local haveMP = true
+        local bombCountMedusa = 1
+        hpLeftMedusa = heroHP
+        mpLeftMedusa = heroMP
         finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
-        while haveHP and haveMP do
-        
-        
-        remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage * 0.4 * bombCount
-        remoteMineDamageDealToMP = (bombDamage * 0.6) * bombCount / damagePerMana
-        hpLeft = heroHP - remoteMineDamageDealToHP
-        mpLeft = heroMP - remoteMineDamageDealToMP
-            if hpLeft < 0 and mpLeft < 0 then -- HP depletes same time, MP doesn't matter
-                haveHP = false
-                haveMP = false
-            elseif mpLeft < 0 and hpLeft > 0 then --MP depletes first, MP matters
-                haveHP = true
-                haveMP = false
-            elseif mpLeft > 0 and hpLeft < 0 then -- HP depletes first, MP doesn't matter
-                haveHP = false
-                haveMP = true
+        if hero:DoesHaveModifier("modifier_treant_living_armor") and hero.team ~= me.team then
+        local treantLivingArmor = hero:FindModifier("modifier_treant_living_armor")
+            if treantLivingArmor then
+                treantLivingArmorStack = treantLivingArmor.stacks
+            end
+            while haveHP and haveMP do
+                if treantLivingArmorStack > 0 then
+                    remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage * 0.4 - treantDamageBlocked
+                else
+                    remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage * 0.4
+                end
+                
+                remoteMineDamageDealToMP = (bombDamage * 0.6)  / damagePerMana
+                hpLeftMedusa = hpLeftMedusa - remoteMineDamageDealToHP
+                mpLeftMedusa = mpLeftMedusa - remoteMineDamageDealToMP
+                
+                if hpLeftMedusa < 0 and mpLeftMedusa < 0 then -- HP depletes same time, MP doesn't matter
+                    haveHP = false
+                    haveMP = false
+                elseif mpLeftMedusa < 0 and hpLeftMedusa > 0 then --MP depletes first, MP matters
+                    haveHP = true
+                    haveMP = false
+                elseif mpLeftMedusa > 0 and hpLeftMedusa < 0 then -- HP depletes first, MP doesn't matter
+                    haveHP = false
+                    haveMP = true
+                else
+                    bombCountMedusa = bombCountMedusa + 1
+                    if treantLivingArmorStack > 0 then
+                        treantLivingArmorStack = treantLivingArmorStack - 1
+                    end
+                end
+            end
+            if haveHP == true and haveMP == false then
+                bombCountMedusa = math.ceil(bombCountMedusa + hpLeftMedusa / ((1 - finalPercentageBlocked) * bombDamage))
             else
-                bombCount = bombCount + 0.1
+                bombCountMedusa = math.ceil(bombCountMedusa)
+            end
+
+        else
+            while haveHP and haveMP do
+                
+                remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage * 0.4
+                remoteMineDamageDealToMP = (bombDamage * 0.6)  / damagePerMana
+                hpLeftMedusa = hpLeftMedusa - remoteMineDamageDealToHP
+                mpLeftMedusa = mpLeftMedusa - remoteMineDamageDealToMP
+                
+                if hpLeftMedusa < 0 and mpLeftMedusa < 0 then -- HP depletes same time, MP doesn't matter
+                    haveHP = false
+                    haveMP = false
+                elseif mpLeftMedusa < 0 and hpLeftMedusa > 0 then --MP depletes first, MP matters
+                    haveHP = true
+                    haveMP = false
+                elseif mpLeftMedusa > 0 and hpLeftMedusa < 0 then -- HP depletes first, MP doesn't matter
+                    haveHP = false
+                    haveMP = true
+                else
+                    bombCountMedusa = bombCountMedusa + 1
+                end
+            end
+            if haveHP == true and haveMP == false then
+                bombCountMedusa = math.ceil(bombCountMedusa + hpLeftMedusa / ((1 - finalPercentageBlocked) * bombDamage))
+            else
+                bombCountMedusa = math.ceil(bombCountMedusa)
+            end
+
+        end
+        return bombCountMedusa
+        
+    elseif hero:DoesHaveModifier("modifier_visage_gravekeepers_cloak") and hero.team ~= me.team then
+        local bombCountVisage = 1
+        local visageBlockArray = {0.03, 0.06, 0.12, 0.16}
+        local visagePercentBlocked = visageBlockArray[hero:GetAbility(3).level]
+        local visageCloak = hero:FindModifier("modifier_visage_gravekeepers_cloak")
+        if visageCloak then
+                visageCloakStack = visageCloak.stacks
+        end    
+        local visageHP = heroHP
+        if hero:DoesHaveModifier("modifier_treant_living_armor") and hero.team ~= me.team then
+            local treantLivingArmor = hero:FindModifier("modifier_treant_living_armor")
+            if treantLivingArmor then
+                treantLivingArmorStack = treantLivingArmor.stacks
+            end
+            local haveHP = true
+            finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
+            visageBaseMagicResistance = (finalPercentageBlocked - visageCloakStack * visagePercentBlocked ) / (1 - visageCloakStack * visagePercentBlocked)
+            while haveHP do
+                finalPercentageBlockedVisage = visageBaseMagicResistance + visagePercentBlocked * visageCloakStack - visagePercentBlocked * visageCloakStack * visageBaseMagicResistance
+                if treantLivingArmorStack > 0 then
+                    remoteMineDamageDealToHP = (1 - finalPercentageBlockedVisage) * bombDamage - treantDamageBlocked
+                else
+                    remoteMineDamageDealToHP = (1 - finalPercentageBlockedVisage) * bombDamage
+                end
+                visageHP = visageHP - remoteMineDamageDealToHP
+            
+                if visageHP < 0 then 
+                    haveHP = false
+                else
+                    bombCountVisage = bombCountVisage + 1
+                    if visageCloakStack > 0 then
+                        visageCloakStack = visageCloakStack - 1
+                    end
+                    if treantLivingArmorStack > 0 then
+                        treantLivingArmorStack = treantLivingArmorStack - 1
+                    end
+                    
+                end
+            end
+        else
+            local haveHP = true
+            finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
+            visageBaseMagicResistance = (finalPercentageBlocked - visageCloakStack * visagePercentBlocked ) / (1 - visageCloakStack * visagePercentBlocked)
+            while haveHP do
+                finalPercentageBlockedVisage = visageBaseMagicResistance + visagePercentBlocked * visageCloakStack - visagePercentBlocked * visageCloakStack * visageBaseMagicResistance
+                remoteMineDamageDealToHP = (1 - finalPercentageBlockedVisage) * bombDamage
+                visageHP = visageHP - remoteMineDamageDealToHP
+            
+                if visageHP < 0 then 
+                    haveHP = false
+                else
+                    bombCountVisage = bombCountVisage + 1
+                    if visageCloakStack > 0 then
+                        visageCloakStack = visageCloakStack - 1
+                    end
+                    
+                end
             end
         end
-        --print(finalPercentageBlocked)
-        if haveHP == true and haveMP == false then
-            bombCount = math.ceil(bombCount + hpLeft / ((1 - finalPercentageBlocked) * bombDamage))
-        else
-            bombCount = math.ceil(bombCount)
-        end
-        return bombCount
-    else
-        finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
-        return math.ceil(heroHP / ((1 - finalPercentageBlocked) * bombDamage))
-    end
+        return bombCountVisage
 
     
-end
 
+    else
+        finalPercentageBlocked = finalPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * finalPercentageBlocked
+        if hero:DoesHaveModifier("modifier_treant_living_armor") and hero.team ~= me.team then
+            local treantLivingArmor = hero:FindModifier("modifier_treant_living_armor")
+            local bombCountTrent = 1
+            if treantLivingArmor then
+                treantLivingArmorStack = treantLivingArmor.stacks
+            end
+            local tempHP = heroHP
+            local haveHP = true
+            while haveHP do
+                if treantLivingArmorStack > 0 then
+                    remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage - treantDamageBlocked
+                else
+                    remoteMineDamageDealToHP = (1 - finalPercentageBlocked) * bombDamage
+                end
+                tempHP = tempHP - remoteMineDamageDealToHP
+            
+                if tempHP < 0 then 
+                    haveHP = false
+                else
+                    bombCountTrent = bombCountTrent + 1
+                    if treantLivingArmorStack > 0 then
+                        treantLivingArmorStack = treantLivingArmorStack - 1
+                    end
+                    
+                end
+            end
+            
+            return bombCountTrent
+        else
+            return math.ceil(heroHP / ((1 - finalPercentageBlocked) * bombDamage))
+        end
+    end
+
+  
+    
+end
 function InvulnerableToRemoteMines(hero)
+
     if  
         ---- Invulnerability granted by being hidden ----
         hero:DoesHaveModifier("modifier_brewmaster_primal_split") or 
