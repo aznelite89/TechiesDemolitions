@@ -247,7 +247,6 @@ function Tick( tick )
     enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
     mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
     AllowSelfDetonateText.visible = true
-    local scepterCheck = me:FindItem("item_ultimate_scepter")
 
     --Obtain Techies' Land Mines Damage
     if me:GetAbility(1).level ~= 0 then
@@ -259,7 +258,7 @@ function Tick( tick )
     --Obtain Techies' Remote Mines Damage
     if me:GetAbility(6).level ~= 0 then
         local remoteMineDamageArray = {300, 450, 600}
-        remoteMineDamage = scepterCheck and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
+        remoteMineDamage = me:FindItem("item_ultimate_scepter") and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
         upRemoteMine = true
     end
 
