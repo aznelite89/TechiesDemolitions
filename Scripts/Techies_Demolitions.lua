@@ -257,7 +257,7 @@ function Tick( tick )
     --Obtain Techies' Remote Mines Damage
     if me:GetAbility(6).level ~= 0 then
         local remoteMineDamageArray = {300, 450, 600}
-        remoteMineDamage = me:FindItem("item_ultimate_scepter") and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
+        remoteMineDamage = me:FindItem(" item_ultimate_scepter") and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
         upRemoteMine = true
     end
 
@@ -292,7 +292,6 @@ function CalculateTechiesInformation()
     local drawFromTopRatio = 0.070
     local illusionCheck = true
     local meepos = entityList:GetEntities({type = LuaEntity.TYPE_MEEPO})
-
 
     for i = 1, #enemies do
         local heroInfo = enemies[i]
@@ -590,27 +589,19 @@ function CalculateDamage(hero, bombNeeded)
     local countBomb = 1
     bombInformationArray.HeroDamage[hero.handle]  = 0
     hero.bombCountArray = {}
-    if me:FindItem("item_ultimate_scepter") then
-        actualHealth = bombNeeded * (150 * (me:GetAbility(6).level + 1) + 150)
-    else
-        actualHealth = bombNeeded * (150 * (me:GetAbility(6).level + 1))
-    end
+    actualHealth = me:FindItem("item_ultimate_scepter") and (bombNeeded * (150 * (me:GetAbility(6).level + 1) + 150)) or (bombNeeded * (150 * (me:GetAbility(6).level + 1)))
 
     for j,value in ipairs(mines) do
-        if value.team == me.team then
-            if hero.team ~= me.team and hero.alive then
-                if value.alive and value.name == "npc_dota_techies_remote_mine" then
-                    check = value.GetDistance2D(value, hero) < 425
-                    if check and value:GetAbility(1).level == 1 then
-                        bombInformationArray.HeroDamage[hero.handle] = bombInformationArray.HeroDamage[hero.handle] + bombInformationArray.Damage[value.handle]
-                        hero.bombCountArray[countBomb] = value
-                        if bombInformationArray.HeroDamage[hero.handle] >=  actualHealth then
-                            SelfDetonate(hero)
-                            break
-                        else
-                            countBomb = countBomb + 1
-                        end
-                    end
+        if value.team == me.team and hero.team ~= me.team and hero.alive and value.alive and value.name == "npc_dota_techies_remote_mine" then
+            check = value.GetDistance2D(value, hero) < 425
+            if check and value:GetAbility(1).level == 1 then
+                bombInformationArray.HeroDamage[hero.handle] = bombInformationArray.HeroDamage[hero.handle] + bombInformationArray.Damage[value.handle]
+                hero.bombCountArray[countBomb] = value
+                if bombInformationArray.HeroDamage[hero.handle] >=  actualHealth then
+                    SelfDetonate(hero)
+                    break
+                else
+                    countBomb = countBomb + 1
                 end
             end
         end
