@@ -24,6 +24,20 @@
     
     Changelog:
     ----------
+    Version 3.4 - 28th December 2014 2:35PM :
+        - Implement array loop for InvulnerableToRemoteMinesList (Thanks swift)
+        - Fixed script crash when the enemy team contains 
+            - CDOTA_Unit_Hero_Treant
+            - CDOTA_Unit_Hero_Bloodseeker
+            - CDOTA_Unit_Hero_Abaddon
+        - Fixed spamming bombing (no more noise)
+        - Rework self detonation (More efficient)
+        - Bomb now will not explode till the last bomb is planted 
+            - If enemy needs 3 bombs and you plant the 3rd bomb, it will explode once the 3rd bomb lands
+            - Previously explode at the gesture of planting
+        - Bomb now take into account mixture of bombs (level 1, level 2, level 3, Scepter)
+        - Efficient bombing for Faceless Void implemented.
+        
     Version 3.3 - 27th December 2014 2:18PM :
         - Removed print statement that causes script to crash
         - Changed comparing hero name string to class ID for efficiency
@@ -77,36 +91,36 @@
             - modifier_eul_cyclone
             - modifier_brewmaster_storm_cyclone
             
-    Version 2.2b - 24th December 2014 8:00PM :
-        - Fixed sentry/gem display bug
-        
-    Version 2.2 - 24th December 2014 4:58PM :
-        - Added Toggle key for auto detonation
-        - Fixed bug regarding remote mines and land mines interaction
-        - Moved helper function EasyDraw to the top
-        
-    Version 2.1b - 24th December 2014 10:38AM:
-        - Clean duplications of code
-        - Fixed bug of not able to initialize script
-        
-    Version 2.1 - 24th December 2014 01:38AM:
-        - Added Self_Detonation Function (BETA)
-        - Self Detonation now bomb minimum number of bombs (Efficient)
-        
-    Version 2.0 - 23rd December 2014 07:12PM:
-        - Added bomb visibility
-        - Added bomb range
-        - Added gem display to the hero panel
-        - Added sentry display to the hero panel
-        - Fixed reloading script error
-        - Added EasyCreateFont(), EasyCreateRect() and EasyCreateText() function for easy drawing
-        - Update bomb display info (Bomb will now display both current and Max bomb)
-        - Push down the bomb information to avoid blocking the death timer
-        - Script will now disabled if Techies is not picked
-        - Put on GitHub
-        
-    Version 1.0 - 6th December 2014 10:28AM:
-        - Added simple calculation for Techies land mines, remote mines and suicide.
+        Version 2.2b - 24th December 2014 8:00PM :
+            - Fixed sentry/gem display bug
+            
+        Version 2.2 - 24th December 2014 4:58PM :
+            - Added Toggle key for auto detonation
+            - Fixed bug regarding remote mines and land mines interaction
+            - Moved helper function EasyDraw to the top
+            
+        Version 2.1b - 24th December 2014 10:38AM:
+            - Clean duplications of code
+            - Fixed bug of not able to initialize script
+            
+        Version 2.1 - 24th December 2014 01:38AM:
+            - Added Self_Detonation Function (BETA)
+            - Self Detonation now bomb minimum number of bombs (Efficient)
+            
+        Version 2.0 - 23rd December 2014 07:12PM:
+            - Added bomb visibility
+            - Added bomb range
+            - Added gem display to the hero panel
+            - Added sentry display to the hero panel
+            - Fixed reloading script error
+            - Added EasyCreateFont(), EasyCreateRect() and EasyCreateText() function for easy drawing
+            - Update bomb display info (Bomb will now display both current and Max bomb)
+            - Push down the bomb information to avoid blocking the death timer
+            - Script will now disabled if Techies is not picked
+            - Put on GitHub
+            
+        Version 1.0 - 6th December 2014 10:28AM:
+            - Added simple calculation for Techies land mines, remote mines and suicide.
 ]]--
 require("libs.ScriptConfig")
 require("libs.Utils")
@@ -137,7 +151,47 @@ function EasyCreateRect(xRatio, yRatio, wRatio, hRatio, color)
     return drawMgr:CreateRect(xRatio * screenResolution.x, yRatio * screenResolution.y, wRatio * screenResolution.x, hRatio * screenResolution.y, color)
 end
 -------- Initialize Variables --------
+sleepTick = 0
 
+local InvulnerableToRemoteMinesList = {
+        ---- Invulnerability granted by being hidden ----
+            "modifier_brewmaster_primal_split", 
+            "modifier_ember_spirit_sleight_of_fist_caster",
+            "modifier_juggernaut_omnislash",
+            "modifier_juggernaut_omnislash_invulnerability",
+            "modifier_life_stealer_infest",
+            "modifier_phoenix_supernova_hiding",
+            "modifier_puck_phase_shift",
+            "modifier_tusk_snowball_movement",
+         ---- Invulnerability granted by disables ----
+            "modifier_bane_nightmare_invulnerable",
+            "modifier_brewmaster_storm_cyclone",
+            "modifier_eul_cyclone",
+            "modifier_shadow_demon_disruption",
+            "modifier_invoker_tornado",
+            "modifier_obsidian_destroyer_astral_imprisonment_prison",
+            ---- Invulnerability granted by blink ----
+            "modifier_ember_spirit_fire_remnant",
+            "modifier_faceless_void_time_walk",
+            "modifier_morphling_waveform",
+            "modifier_storm_spirit_ball_lightning",
+            "modifier_rattletrap_hookshot", -- not invulnerable but too fast to detonate
+            ---- Invulnerability granted by spell ----
+            "modifier_medusa_stone_gaze",
+            "modifier_naga_siren_song_of_the_siren",
+            "modifier_oracle_false_promise",
+            "modifier_dazzle_shallow_grave",
+            "modifier_abaddon_borrowed_time",
+            ---- Invulnerability granted by mirror image ----
+            "modifier_chaos_knight_phantasm",
+            "modifier_naga_siren_mirror_image",
+            ---- Spell Immunity ----
+            "modifier_huskar_life_break_charge",
+            "modifier_omniknight_repel",
+            "modifier_life_stealer_rage",
+            "modifier_juggernaut_blade_fury",
+            "modifier_omniknight_repel"}
+            
 local landMineDamage = 0
 local remoteMineDamage = 0
 local ShowMineRequired = config.ShowMineRequired
@@ -158,6 +212,7 @@ local effect = {}
 local bombCountArray = {}
 local bombInformationArray = {}
 bombInformationArray.Damage = {}
+bombInformationArray.HeroDamage = {}
 effect.Range = {}
 effect.Visible = {}
 
@@ -169,9 +224,12 @@ AllowSelfDetonateText.visible = false
 
 function Tick( tick )
 
+    currentTick = tick
+
     if not PlayingGame() or client.console or not SleepCheck("stop") then return end
     
     me = entityList:GetMyHero()
+    --print(client:ScreenPosition(me.position))
     local ID = me.classId
 
     if AllowSelfDetonate == false then
@@ -217,7 +275,10 @@ function Tick( tick )
             if mines ~= nil then
                 MinesInformationDisplay()
             end
-            CalculateTechiesInformation()
+            if currentTick > sleepTick then
+                CalculateTechiesInformation()
+                Sleep(200)
+            end
         end
     end
 end
@@ -251,40 +312,71 @@ function CalculateTechiesInformation()
                 undyingMinAmplificationArray = {0.05, 0.10, 0.15}
                 undyingMaxAmplificationArray = {0.20, 0.25, 0.30}
             end
-            undyingMinPercentAmplified = undyingMinAmplificationArray[heroInfo:GetAbility(4).level]
-            undyingMaxPercentAmplified = undyingMaxAmplificationArray[heroInfo:GetAbility(4).level]
+            if heroInfo:GetAbility(4) ~= nil then
+                undyingMinPercentAmplified = undyingMinAmplificationArray[heroInfo:GetAbility(4).level]
+                undyingMaxPercentAmplified = undyingMaxAmplificationArray[heroInfo:GetAbility(4).level]
+            else
+                undyingMinPercentAmplified = 0
+                undyingMaxPercentAmplified = 0
+            end
         end
         
         if ID == CDOTA_Unit_Hero_Shadow_Demon and heroInfo.team == me.team then
             demonAmplificationArray = {0.20, 0.30, 0.40, 0.50}
-            demonPercentAmplified = demonAmplificationArray[heroInfo:GetAbility(2).level]
+            if heroInfo:GetAbility(2) ~= nil then
+                demonPercentAmplified = demonAmplificationArray[heroInfo:GetAbility(2).level]
+            else
+                demonPercentAmplified = 0
+            end
         end
         
         if ID == CDOTA_Unit_Hero_Treant and heroInfo.team ~= me.team then
             treantInstanceBlockArray = {4, 5, 6, 7}
             treantDamageBlockArray = {20, 40, 60, 80}
-            treantInstanceBlocked = treantInstanceBlockArray[heroInfo:GetAbility(3).level]
-            treantDamageBlocked = treantDamageBlockArray[heroInfo:GetAbility(3).level]
+
+            if heroInfo:GetAbility(3) ~= nil then
+                treantInstanceBlocked = treantInstanceBlockArray[heroInfo:GetAbility(3).level]
+                treantDamageBlocked = treantDamageBlockArray[heroInfo:GetAbility(3).level]
+            else 
+                treantInstanceBlocked = 0
+                treantDamageBlocked = 0
+            end
         end
         
         if ID == CDOTA_Unit_Hero_Bloodseeker then
             bloodseekerAmplificationArray = {0.25, 0.30, 0.35, 0.40}
-            bloodseekerPercentAmplified = bloodseekerAmplificationArray[heroInfo:GetAbility(1).level]
+            if heroInfo:GetAbility(1) ~= nil then
+                bloodseekerPercentAmplified = bloodseekerAmplificationArray[heroInfo:GetAbility(1).level]
+            else
+                bloodseekerPercentAmplified = 0 
+            end
         end
         
         if ID == CDOTA_Unit_Hero_Chen and heroInfo.team == me.team then
             chenAmplificationArray = {0.14, 0.18, 0.22, 0.26}
-            chenPercentAmplified = chenAmplificationArray[heroInfo:GetAbility(1).level]
+            if heroInfo:GetAbility(1) ~= nil then
+                chenPercentAmplified = chenAmplificationArray[heroInfo:GetAbility(1).level]
+            else 
+                chenPercentAmplified = 0
+            end
         end
         if ID == CDOTA_Unit_Hero_Abaddon and heroInfo.team ~= me.team then
             abaddonBlockArray = {110, 140, 170, 200}
-            abaddonDamageBlocked = abaddonBlockArray[heroInfo:GetAbility(2).level]
+            if heroInfo:GetAbility(2) ~= nil then
+                abaddonDamageBlocked = abaddonBlockArray[heroInfo:GetAbility(2).level]
+            else
+                abaddonDamageBlocked = 0
+            end
         end
         
 
         if ID == CDOTA_Unit_Hero_Wisp and heroInfo.team ~= me.team then
             wispBlockArray = {0.05, 0.10, 0.15, 0.20}
-            wispPercentBlocked = wispBlockArray[heroInfo:GetAbility(4).level]
+            if heroInfo:GetAbility(4) ~= nil then
+                wispPercentBlocked = wispBlockArray[heroInfo:GetAbility(4).level]
+            else
+                wispPercentBlocked = 0
+            end
         end
 
 
@@ -305,6 +397,7 @@ function CalculateTechiesInformation()
             local playerIconLocation = heroInfo.playerId
             if uniqueIdentifier ~= me.handle then
                 if heroInfoPanel[uniqueIdentifier] == nil then 
+                    bombInformationArray.HeroDamage[uniqueIdentifier] = 0
                     heroInfoPanel[uniqueIdentifier] = {}
                     if playerIconLocation < 5 then
                         xIconOrigin = 0.273958
@@ -346,14 +439,15 @@ function CalculateTechiesInformation()
                 ------------------------------------------- CALCULATIONS -------------------------------------------
                
                 if heroInfo.alive then
-                    aliveFlag = 1
+                    heroInfoPanel[uniqueIdentifier].aliveFlag = 1
+
                 else
-                    aliveFlag = 0
+                    heroInfoPanel[uniqueIdentifier].aliveFlag = 0
                 end
 
                 if upLandMine and landMineDamage ~= nil then
                     local landMineDamageDeal = (1 - heroInfo.dmgResist) * landMineDamage
-                    heroInfoPanel[uniqueIdentifier].numberOfLandMineRequired = math.ceil(heroInfo.health / landMineDamageDeal) * aliveFlag
+                    heroInfoPanel[uniqueIdentifier].numberOfLandMineRequired = math.ceil(heroInfo.health / landMineDamageDeal) * heroInfoPanel[uniqueIdentifier].aliveFlag
                     heroInfoPanel[uniqueIdentifier].maxLandMineRequired = math.ceil(heroInfo.maxHealth / landMineDamageDeal)
                     local landMineString = tostring(heroInfoPanel[uniqueIdentifier].numberOfLandMineRequired).." / "..tostring(heroInfoPanel[uniqueIdentifier].maxLandMineRequired)
                     if heroInfoPanel[uniqueIdentifier].landMineText ~= nil then
@@ -367,11 +461,11 @@ function CalculateTechiesInformation()
                     local remoteMineString = ""
                     
                     if InvulnerableToRemoteMines(heroInfo) or heroInfo.magicDmgResist == 1 then
-                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = math.ceil(heroInfo.health / 0) * aliveFlag
+                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = math.ceil(heroInfo.health / 0) * heroInfoPanel[uniqueIdentifier].aliveFlag
                         heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
                         remoteMineString = ("MAX")
                     else
-                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = CalculateBombsRequired(heroInfo, remoteMineDamage, aliveFlag)
+                        heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired = CalculateBombsRequired(heroInfo, remoteMineDamage, heroInfoPanel[uniqueIdentifier].aliveFlag)
                         heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired = math.ceil(heroInfo.maxHealth / remoteMineDamageDeal)
                         remoteMineString = tostring(heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired).." / "..tostring(heroInfoPanel[uniqueIdentifier].maxRemoteMineRequired)
                     end
@@ -419,9 +513,9 @@ function CalculateTechiesInformation()
                     end
                 end
                 if heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired ~= nil then
-                    bombCountArray = {}
-                    if AllowSelfDetonate and numberOfBombsStepped(heroInfo) >= heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired and not InvulnerableToRemoteMines(heroInfo) then
-                        SelfDetonate(heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired)
+
+                    if AllowSelfDetonate   then
+                        CalculateDamage(heroInfo, heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired)
                     end
                 end
             end
@@ -431,7 +525,9 @@ function CalculateTechiesInformation()
 end
 
 function MinesInformationDisplay()
+
     for i,v in ipairs(mines) do
+        local onScreen = client:ScreenPosition(v.position)
         if v.team == me.team then
             if bombInformationArray.Damage == nil then
                 bombInformationArray.Damage = {}
@@ -446,37 +542,48 @@ function MinesInformationDisplay()
             end
             
             if effect.Range == nil then
-                    effect.Range = {}
+               effect.Range = {}
             end
             if effect.Visible == nil then
                 effect.Visible = {}
             end
-            if v.alive then    
-                if not effect.Range[v.handle] then
-                    effect.Range[v.handle] = Effect(v,"range_display")
-                    if v.name == "npc_dota_techies_land_mine" and ShowLandMineRange then
-                        effect.Range[v.handle]:SetVector(1, Vector(200,0,0) )
-                    elseif v.name == "npc_dota_techies_stasis_trap" and ShowStatisRange then
-                        effect.Range[v.handle]:SetVector(1, Vector(450,0,0) )
-                    elseif v.name == "npc_dota_techies_remote_mine" and ShowRemoteMineRange then
-                        effect.Range[v.handle]:SetVector(1, Vector(425,0,0) )
+            if onScreen then
+                if v.alive then    
+                    if effect.Range[v.handle] == nil then
+                        effect.Range[v.handle] = Effect(v,"range_display")
+                        if v.name == "npc_dota_techies_land_mine" and ShowLandMineRange then
+                            effect.Range[v.handle]:SetVector(1, Vector(200,0,0) )
+                        elseif v.name == "npc_dota_techies_stasis_trap" and ShowStatisRange then
+                            effect.Range[v.handle]:SetVector(1, Vector(450,0,0) )
+                        elseif v.name == "npc_dota_techies_remote_mine" and ShowRemoteMineRange then
+                            effect.Range[v.handle]:SetVector(1, Vector(425,0,0) )
+                        end
+                    end
+                    if v.visibleToEnemy then    
+                        if not effect.Visible[v.handle] and ShowMineVisibility then
+                            effect.Visible[v.handle] = Effect(v,"aura_shivas")
+                            effect.Visible[v.handle]:SetVector(1, Vector(0,0,0) )
+                        end
+                    end
+                else
+                    if  effect.Range[v.handle] ~= nil then
+                        effect.Range[v.handle] = nil
+                        collectgarbage("collect")
+                    end
+                    
+                    if  effect.Visible[v.handle] then
+                        effect.Visible[v.handle] = nil
+                        collectgarbage("collect")
                     end
                 end
             else
-                if  effect.Range[v.handle] then
-                    effect.Range[v.handle] = nil
-                    collectgarbage("collect")
+                if  effect.Range[v.handle] ~= nil then
+                        effect.Range[v.handle] = nil
+                        collectgarbage("collect")
                 end
-            end
-            if v.alive and v.visibleToEnemy then    
-                if not effect.Visible[v.handle] and ShowMineVisibility then
-                    effect.Visible[v.handle] = Effect(v,"aura_shivas")
-                    effect.Visible[v.handle]:SetVector(1, Vector(0,0,0) )
-                end
-            else
                 if  effect.Visible[v.handle] then
-                    effect.Visible[v.handle] = nil
-                    collectgarbage("collect")
+                        effect.Visible[v.handle] = nil
+                        collectgarbage("collect")
                 end
             end
         end
@@ -484,50 +591,46 @@ function MinesInformationDisplay()
 end
 
 
-function numberOfBombsStepped(hero)
-    local countBomb = 0
+function CalculateDamage(hero, bombNeeded)
+    local countBomb = 1
+    bombInformationArray.HeroDamage[hero.handle]  = 0
+    hero.bombCountArray = {}
+    if me:FindItem("item_ultimate_scepter") then
+        actualHealth = bombNeeded * (150 * (me:GetAbility(6).level + 1) + 150)
+    else 
+        actualHealth = bombNeeded * (150 * (me:GetAbility(6).level + 1))
+    end
+
     for j,value in ipairs(mines) do
         if value.team == me.team then
             if hero.team ~= me.team and hero.alive then
                 if value.alive and value.name == "npc_dota_techies_remote_mine" then
                     check = value.GetDistance2D(value, hero) < 425
-                    if check then
-                        bombCountArray[value.handle] = true
-                        countBomb = countBomb + 1
+                    if check and value:GetAbility(1).level == 1 then
+                        bombInformationArray.HeroDamage[hero.handle] = bombInformationArray.HeroDamage[hero.handle] + bombInformationArray.Damage[value.handle]
+                        hero.bombCountArray[countBomb] = value
+                        if bombInformationArray.HeroDamage[hero.handle] >=  actualHealth then
+                            SelfDetonate(hero)
+                            break
+                        else
+                            countBomb = countBomb + 1
+                        end
                     end
                 end
-            else
-                return -1
-            end
-        end
-    end
-    return countBomb
-end
-
-function SelfDetonate(bombNeeded)
-    local count = 0
-    for j,value in ipairs(mines) do
-        if bombCountArray[value.handle] == true then
-            bombCountArray[value.handle] = false
-            if count < bombNeeded then
-                count = count + 1
-                if value.name == "npc_dota_techies_remote_mine" then
-                    value:CastAbility(value:GetAbility(1))
-                end
-                
             end
         end
     end
 end
 
---[[function isHeroInBombRange(x, y, center_x, center_y)
-    if (math.pow((x - center_x),2) + math.pow((y - center_y), 2)) < math.pow(425, 2) then
-        return true
-    else
-        return false
+function SelfDetonate(hero)
+    for i = 1, #hero.bombCountArray do
+        v = hero.bombCountArray[i]
+        if InvulnerableToRemoteMines(hero) == false  then
+            v:CastAbility(v:GetAbility(1))
+        end
     end
 end
-]]
+
 function CalculateBombsRequired (hero, bombDamage, alive)
 
     local heroHP = hero.health
@@ -583,8 +686,7 @@ function CalculateBombsRequired (hero, bombDamage, alive)
         extraMagicPercentBlocked = extraMagicPercentBlocked + wispPercentBlocked
         
     end
-    
-    
+
     if hero:DoesHaveModifier("modifier_abaddon_aphotic_shield") and hero.team ~= me.team then
         heroHP = heroHP + abaddonDamageBlocked
     end
@@ -790,10 +892,21 @@ function CalculateBombsRequired (hero, bombDamage, alive)
   
     
 end
-function InvulnerableToRemoteMines(hero)
 
-    if  
-        ---- Invulnerability granted by being hidden ----
+function Sleep(duration)
+    sleepTick = currentTick + duration
+end
+
+
+function InvulnerableToRemoteMines(hero)
+    for i,modifiers in ipairs(InvulnerableToRemoteMinesList) do
+        if hero:DoesHaveModifier(modifiers) then
+            return true
+        end
+    end
+    return false
+    --return InvulnerableToRemoteMinesSet[]
+        --[[---- Invulnerability granted by being hidden ----
         hero:DoesHaveModifier("modifier_brewmaster_primal_split") or 
         hero:DoesHaveModifier("modifier_ember_spirit_sleight_of_fist_caster") or
         hero:DoesHaveModifier("modifier_juggernaut_omnislash") or
@@ -834,10 +947,11 @@ function InvulnerableToRemoteMines(hero)
         return true
     else
         return false
-    end
+    end]]
 end
 
 function GameClose()
+    sleepTick = 0
     landMineDamage = 0
     remoteMineDamage = 0
     heroInfoPanel = {}
