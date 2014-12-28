@@ -905,49 +905,6 @@ function InvulnerableToRemoteMines(hero)
         end
     end
     return false
-    --return InvulnerableToRemoteMinesSet[]
-        --[[---- Invulnerability granted by being hidden ----
-        hero:DoesHaveModifier("modifier_brewmaster_primal_split") or
-        hero:DoesHaveModifier("modifier_ember_spirit_sleight_of_fist_caster") or
-        hero:DoesHaveModifier("modifier_juggernaut_omnislash") or
-        hero:DoesHaveModifier("modifier_juggernaut_omnislash_invulnerability") or
-        hero:DoesHaveModifier("modifier_life_stealer_infest") or
-        hero:DoesHaveModifier("modifier_phoenix_supernova_hiding") or
-        hero:DoesHaveModifier("modifier_puck_phase_shift") or
-        hero:DoesHaveModifier("modifier_tusk_snowball_movement") or
-        ---- Invulnerability granted by disables ----
-        hero:DoesHaveModifier("modifier_bane_nightmare_invulnerable") or
-        hero:DoesHaveModifier("modifier_brewmaster_storm_cyclone") or
-        hero:DoesHaveModifier("modifier_eul_cyclone") or
-        hero:DoesHaveModifier("modifier_shadow_demon_disruption") or
-        hero:DoesHaveModifier("modifier_invoker_tornado") or
-        hero:DoesHaveModifier("modifier_obsidian_destroyer_astral_imprisonment_prison") or
-        ---- Invulnerability granted by blink ----
-        hero:DoesHaveModifier("modifier_ember_spirit_fire_remnant") or
-        hero:DoesHaveModifier("modifier_faceless_void_time_walk") or
-        hero:DoesHaveModifier("modifier_morphling_waveform") or
-        hero:DoesHaveModifier("modifier_storm_spirit_ball_lightning") or
-        hero:DoesHaveModifier("modifier_rattletrap_hookshot") or -- not invulnerable but too fast to detonate
-        ---- Invulnerability granted by spell ----
-        hero:DoesHaveModifier("modifier_medusa_stone_gaze") or
-        hero:DoesHaveModifier("modifier_naga_siren_song_of_the_siren") or
-        hero:DoesHaveModifier("modifier_oracle_false_promise") or
-        hero:DoesHaveModifier("modifier_dazzle_shallow_grave") or
-        hero:DoesHaveModifier("modifier_abaddon_borrowed_time") or
-        ---- Invulnerability granted by mirror image ----
-        hero:DoesHaveModifier("modifier_chaos_knight_phantasm") or
-        hero:DoesHaveModifier("modifier_naga_siren_mirror_image") or
-        ---- Spell Immunity ----
-        hero:DoesHaveModifier("modifier_huskar_life_break_charge") or
-        --hero:DoesHaveModifier("modifier_item_black_king_bar") or
-        hero:DoesHaveModifier("modifier_omniknight_repel") or
-        hero:DoesHaveModifier("modifier_life_stealer_rage") or
-        hero:DoesHaveModifier("modifier_juggernaut_blade_fury") or
-        hero:DoesHaveModifier("modifier_omniknight_repel") then
-        return true
-    else
-        return false
-    end]]
 end
 
 function GameClose()
