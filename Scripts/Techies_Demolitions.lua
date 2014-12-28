@@ -230,7 +230,6 @@ function Tick( tick )
 
     me = entityList:GetMyHero()
     --print(client:ScreenPosition(me.position))
-    local ID = me.classId
 
     if AllowSelfDetonate == false then
         AllowSelfDetonateText.text = "( ] ) Auto Detonate: OFF"
@@ -238,7 +237,7 @@ function Tick( tick )
         AllowSelfDetonateText.text = "( ] ) Auto Detonate: ON"
     end
 
-    if not me or ID ~= CDOTA_Unit_Hero_Techies  then
+    if not me or me.classId ~= CDOTA_Unit_Hero_Techies  then
         print("This script is for Techies")
         script:Disable()
         return
