@@ -241,44 +241,45 @@ function Tick( tick )
     if not me or ID ~= CDOTA_Unit_Hero_Techies  then
         print("This script is for Techies")
         script:Disable()
-    else
-        enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
-        mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
-        AllowSelfDetonateText.visible = true
-        local scepterCheck = me:FindItem("item_ultimate_scepter")
+        return
+    end
 
-        --Obtain Techies' Land Mines Damage
-        if me:GetAbility(1).level ~= 0 then
-            local landMineDamageArray = {300, 375, 450, 525}
-            landMineDamage = landMineDamageArray[me:GetAbility(1).level]
-            upLandMine = true
+    enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
+    mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+    AllowSelfDetonateText.visible = true
+    local scepterCheck = me:FindItem("item_ultimate_scepter")
+
+    --Obtain Techies' Land Mines Damage
+    if me:GetAbility(1).level ~= 0 then
+        local landMineDamageArray = {300, 375, 450, 525}
+        landMineDamage = landMineDamageArray[me:GetAbility(1).level]
+        upLandMine = true
+    end
+
+    --Obtain Techies' Remote Mines Damage
+    if me:GetAbility(6).level ~= 0 then
+        local remoteMineDamageArray = {300, 450, 600}
+        if scepterCheck then
+            remoteMineDamage = remoteMineDamageArray[me:GetAbility(6).level] + 150
+        else
+            remoteMineDamage = remoteMineDamageArray[me:GetAbility(6).level]
         end
+        upRemoteMine = true
+    end
 
-        --Obtain Techies' Remote Mines Damage
-        if me:GetAbility(6).level ~= 0 then
-            local remoteMineDamageArray = {300, 450, 600}
-            if scepterCheck then
-                remoteMineDamage = remoteMineDamageArray[me:GetAbility(6).level] + 150
-            else
-                remoteMineDamage = remoteMineDamageArray[me:GetAbility(6).level]
-            end
-            upRemoteMine = true
+    if me:GetAbility(3).level ~= 0 then
+        local suicideDamageArray = {500, 650, 850, 1150}
+        upSuicide = true
+        suicideDamage = suicideDamageArray[me:GetAbility(3).level]
+    end
+
+    if ShowMineRequired then
+        if mines ~= nil then
+            MinesInformationDisplay()
         end
-
-        if me:GetAbility(3).level ~= 0 then
-            local suicideDamageArray = {500, 650, 850, 1150}
-            upSuicide = true
-            suicideDamage = suicideDamageArray[me:GetAbility(3).level]
-        end
-
-        if ShowMineRequired then
-            if mines ~= nil then
-                MinesInformationDisplay()
-            end
-            if currentTick > sleepTick then
-                CalculateTechiesInformation()
-                Sleep(200)
-            end
+        if currentTick > sleepTick then
+            CalculateTechiesInformation()
+            Sleep(200)
         end
     end
 end
