@@ -259,11 +259,7 @@ function Tick( tick )
     --Obtain Techies' Remote Mines Damage
     if me:GetAbility(6).level ~= 0 then
         local remoteMineDamageArray = {300, 450, 600}
-        if scepterCheck then
-            remoteMineDamage = remoteMineDamageArray[me:GetAbility(6).level] + 150
-        else
-            remoteMineDamage = remoteMineDamageArray[me:GetAbility(6).level]
-        end
+        remoteMineDamage = scepterCheck and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
         upRemoteMine = true
     end
 
