@@ -1,5 +1,5 @@
 
---<<Techies_Demolitions script by Zanko version 3.3>>
+--<<Techies_Demolitions script by Zanko version 3.4>>
 --[[
 
              _.-^^---....,,--
@@ -16,7 +16,7 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 3.3 ===========
+    =========== Version 3.4 ===========
 
     Description:
     ------------
