@@ -1,7 +1,5 @@
-
---<<Techies_Demolitions script by Zanko version 3.4>>
+--<<Techies_Demolitions script by Zanko version 4.0f>>
 --[[
-
              _.-^^---....,,--
          _--                  --_
         <                        >)
@@ -16,14 +14,39 @@
     -------------------------------------
     | Techies_Demolitions Script by Zanko |
     -------------------------------------
-    =========== Version 3.4 ===========
-
+    =========== Version 4.0f ===========
     Description:
     ------------
         Useful information to plan your Techies strategies (Detailed information can be found in the forum images)
-
     Changelog:
     ----------
+	Version 4.0f - 2nd May 2015 7:37PM :
+        - Fix for 6.84
+    Version 4.0e - 27th February 2015 6:37PM :
+        - Fix error startup
+        - Fix forcestaff/eul to dispel linken
+        - Implement greedy bombing (Hold down CTRL)
+    Version 4.0d - 18th January 2015 4:31PM :
+        - Use Mouseover for more realistic forcestaff
+        - Change CTRL to ALT for convenience
+    Version 4.0c - 11th January 2015 3:43PM :
+        - Fixed Meepo bug
+        - Fixed Auto forcestaff to locate nil hero
+        - Clean Code
+    Version 4.0b - 11th January 2015 12:53PM :
+        - Fixed Auto forcestaff that cause crashes
+        - Script now requires "libs.TargetFind"
+    Version 4.0 - 11th January 2015 2:35PM :
+        - Fixed Scepter damage bug (Thanks Thomas)
+        - Fixed Spectre reduction bug (Thanks Thomas)
+        - Added Abaddon redirect and Kunkka Boat mechanics
+        - Fixed Meepo illusion bug
+        - Fixed bomb to randomly detonate due to last seen hero
+        - Added Auto force staff (Hold CTRL to see the range for forcestaff and Eul and to activate this function)
+            - Forcestaff if there is fatal mine stack 600 units ahead and is in cast range of 800.
+            - Removal of linken and force staff if the enemy is in cast range of 700 for Eul Scepter.
+        - Added selections display of number of bombs.
+        - Added menu selections for hero to auto detonate
     Version 3.4 - 28th December 2014 2:35PM :
         - Implement array loop for InvulnerableToRemoteMinesList (Thanks swift)
         - Fixed script crash when the enemy team contains
@@ -37,7 +60,6 @@
             - Previously explode at the gesture of planting
         - Bomb now take into account mixture of bombs (level 1, level 2, level 3, Scepter)
         - Efficient bombing for Faceless Void implemented.
-
     Version 3.3 - 27th December 2014 2:18PM :
         - Removed print statement that causes script to crash
         - Changed comparing hero name string to class ID for efficiency
@@ -52,7 +74,6 @@
             - Templar assassin refraction (Track cool down, assume maximum charge if on cool down)
             - modifier_treant_living_armor
             - modifier_visage_gravekeepers_cloak
-
     Version 3.2 - 27th December 2014 1:11AM :
         - Self detonation now works with meepo clone. Display GUI will only display for main meepo.
         - Self detonation will now consider
@@ -65,12 +86,10 @@
         - Self detonation will consider if the skill above are stacked together
              (Example, Ember can have 4 modifiers can it will calculate accordingly)
         - GUI display for remote mine will display RequiredBomb(with or without buff)/ Max Bomb (Without Buff)
-
     Version 3.1 - 26th December 2014 5:55PM :
         - Clean some code
         - Update spell immunity/invulnerable list
         - Change bomb display, if target cannot be killed then display "MAX" instead of "#INF/#INF"
-
     Version 3.0 - 25th December 2014 12:10AM :
         - Clean code
         - Bomb will not auto detonate if the following modifier occurs
@@ -90,23 +109,18 @@
             - modifier_dazzle_shallow_grave
             - modifier_eul_cyclone
             - modifier_brewmaster_storm_cyclone
-
         Version 2.2b - 24th December 2014 8:00PM :
             - Fixed sentry/gem display bug
-
         Version 2.2 - 24th December 2014 4:58PM :
             - Added Toggle key for auto detonation
             - Fixed bug regarding remote mines and land mines interaction
             - Moved helper function EasyDraw to the top
-
         Version 2.1b - 24th December 2014 10:38AM:
             - Clean duplications of code
             - Fixed bug of not able to initialize script
-
         Version 2.1 - 24th December 2014 01:38AM:
             - Added Self_Detonation Function (BETA)
             - Self Detonation now bomb minimum number of bombs (Efficient)
-
         Version 2.0 - 23rd December 2014 07:12PM:
             - Added bomb visibility
             - Added bomb range
@@ -118,12 +132,12 @@
             - Push down the bomb information to avoid blocking the death timer
             - Script will now disabled if Techies is not picked
             - Put on GitHub
-
         Version 1.0 - 6th December 2014 10:28AM:
             - Added simple calculation for Techies land mines, remote mines and suicide.
 ]]--
 require("libs.ScriptConfig")
 require("libs.Utils")
+require("libs.TargetFind")
 
 config = ScriptConfig.new()
 config:SetParameter("ShowMineRequired", true)
@@ -138,6 +152,7 @@ config:Load()
 
 ------- Draw Helper Function -----------
 local screenResolution = client.screenSize
+local screenRatio = client.screenRatio
 
 function EasyCreateFont(name, fontname, tallRatio, weight)
     return drawMgr:CreateFont(name, fontname, tallRatio * screenResolution.y, weight)
@@ -201,6 +216,7 @@ local ShowRemoteMineRange = config.ShowRemoteMineRange
 local ShowMineVisibility = config.ShowMineVisibility
 local ShowGem = config.ShowGem
 local ShowSentry = config.ShowSentry
+local myDrawing = {}
 
 local toggleCommand = config.Active
 local AllowSelfDetonate = true
@@ -211,10 +227,9 @@ local upSuicide = false
 local effect = {}
 local bombCountArray = {}
 local bombInformationArray = {}
-bombInformationArray.Damage = {}
-bombInformationArray.HeroDamage = {}
-effect.Range = {}
-effect.Visible = {}
+
+heroIcon = {}
+clickIcon = {}
 
 local F10 = EasyCreateFont("F10", "Arial", 0.0125, 1)
 local F11 = EasyCreateFont("F11", "Arial", 0.01274074074074074, 550 * screenResolution.x)
@@ -227,15 +242,10 @@ function Tick( tick )
     currentTick = tick
 
     if not PlayingGame() or client.console or not SleepCheck("stop") then return end
-
+    if sleepTick and sleepTick > tick then return end
     me = entityList:GetMyHero()
-    --print(client:ScreenPosition(me.position))
 
-    if AllowSelfDetonate == false then
-        AllowSelfDetonateText.text = "( ] ) Auto Detonate: OFF"
-    else
-        AllowSelfDetonateText.text = "( ] ) Auto Detonate: ON"
-    end
+    
 
     if not me or me.classId ~= CDOTA_Unit_Hero_Techies  then
         print("This script is for Techies")
@@ -243,8 +253,29 @@ function Tick( tick )
         return
     end
 
+    if not bombInformationArray.Damage then
+        bombInformationArray.Damage = {}
+    end
+    
+    if not bombInformationArray.HeroDamage then
+        bombInformationArray.HeroDamage = {}
+    end
+    
+    if not bombInformationArray.HeroPredictedDamage then
+        bombInformationArray.HeroPredictedDamage = {}
+    end
+
+    if not effect.Range then
+        effect.Range = {}
+    end
+    
+    if not effect.Visible then
+        effect.Visible = {}
+    end
+    
     enemies = entityList:GetEntities({type = LuaEntity.TYPE_HERO})
     mines = entityList:GetEntities({classId = CDOTA_NPC_TechiesMines})
+    
     AllowSelfDetonateText.visible = true
 
     --Obtain Techies' Land Mines Damage
@@ -257,7 +288,7 @@ function Tick( tick )
     --Obtain Techies' Remote Mines Damage
     if me:GetAbility(6).level ~= 0 then
         local remoteMineDamageArray = {300, 450, 600}
-        remoteMineDamage = me:FindItem(" item_ultimate_scepter") and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
+        remoteMineDamage = me:FindItem("item_ultimate_scepter") and (remoteMineDamageArray[me:GetAbility(6).level] + 150) or remoteMineDamageArray[me:GetAbility(6).level]
         upRemoteMine = true
     end
 
@@ -266,16 +297,15 @@ function Tick( tick )
         upSuicide = true
         suicideDamage = suicideDamageArray[me:GetAbility(3).level]
     end
-
+    
     if ShowMineRequired then
         if mines ~= nil then
             MinesInformationDisplay()
         end
-        if currentTick > sleepTick then
             CalculateTechiesInformation()
-            Sleep(200)
-        end
+            ShowSelectedInformation()
     end
+    Sleep(100)
 end
 
 function Key(msg,code)
@@ -285,8 +315,50 @@ function Key(msg,code)
             AllowSelfDetonate = not AllowSelfDetonate
         end
     end
+    if AllowSelfDetonate == false then
+        AllowSelfDetonateText.text = "( ] ) Auto Detonate: OFF"
+    else
+        AllowSelfDetonateText.text = "( ] ) Auto Detonate: ON"
+    end
+    for i = 1,5 do
+        local x = 0.7369791666666666
+        local y = 0.008333333333333333
+        local w = 0.011458333333333333
+        local h = 0.020370370370370372
+        
+        if IsMouseOnButton(x + i * 0.0145, y, w, h) then
+            if msg == LBUTTON_DOWN then
+                heroIcon[i].activated = not heroIcon[i].activated
+            end
+        end
+    end
+    
 end
 
+function IsMouseOnButton(xRatio, yRatio, wRatio, hRatio)
+    local mouseXRatio = client.mouseScreenPosition.x / screenResolution.x
+    local mouseYRatio = client.mouseScreenPosition.y / screenResolution.y
+    return mouseXRatio > xRatio and mouseXRatio <= xRatio + wRatio and mouseYRatio > yRatio and mouseYRatio <= yRatio + hRatio
+end
+
+function DisableEnemy(hero)
+    if hero.classId == CDOTA_Unit_Hero_Zuus then
+        if hero:GetAbility(4) and hero:GetAbility(4).level > 0 and hero:GetAbility(4).abilityPhase then
+            SelfEul()
+        end
+    end
+    if me:DoesHaveModifier("modifier_lina_laguna_blade") or me:DoesHaveModifier("modifier_lion_finger_of_death") then
+        SelfEul()
+    end
+end
+
+function SelfEul()
+    local eulScepter = me:FindItem("item_cyclone")
+    if eulScepter and eulScepter.cd == 0 and me.mana >= eulScepter.manacost and SleepCheck("Eul") then
+        me:SafeCastItem(eulScepter.name, me)
+        Sleep(300, "Eul")
+    end
+end
 function CalculateTechiesInformation()
     local xSpacing = 0.034375
     local drawFromTopRatio = 0.070
@@ -297,6 +369,12 @@ function CalculateTechiesInformation()
         local heroInfo = enemies[i]
         local ID = heroInfo.classId
 
+		if IsKeyDown(88) and SleepCheck("Aggro") and enemies[i].alive then
+                Aggro(enemies[i])
+                Sleep(500, "Aggro")
+            end
+			
+		DisableEnemy(enemies[i])
         if ID == CDOTA_Unit_Hero_Undying and heroInfo.team == me.team then
             undying = heroInfo
             if heroInfo:FindItem("item_ultimate_scepter") then
@@ -354,6 +432,7 @@ function CalculateTechiesInformation()
                 chenPercentAmplified = 0
             end
         end
+        
         if ID == CDOTA_Unit_Hero_Abaddon and heroInfo.team ~= me.team then
             abaddonBlockArray = {110, 140, 170, 200}
             if heroInfo:GetAbility(2) ~= nil then
@@ -362,7 +441,6 @@ function CalculateTechiesInformation()
                 abaddonDamageBlocked = 0
             end
         end
-
 
         if ID == CDOTA_Unit_Hero_Wisp and heroInfo.team ~= me.team then
             wispBlockArray = {0.05, 0.10, 0.15, 0.20}
@@ -373,14 +451,19 @@ function CalculateTechiesInformation()
             end
         end
 
-
         if meepos ~= nil then
             if ID == CDOTA_Unit_Hero_Meepo then
+                heroInfo.meepoNumber = -1
                 if heroInfo.meepoIllusion then
                     illusionCheck = true
+                else 
+                    illusionCheck = false
                 end
+                
                 local meepoUlt = heroInfo:GetAbility(4)
-                heroInfo.meepoNumber = (meepoUlt:GetProperty("CDOTA_Ability_Meepo_DividedWeStand", "m_nWhichDividedWeStand") + 1)
+                if meepoUlt and meepoUlt.level ~= nil then
+                    heroInfo.meepoNumber = (meepoUlt:GetProperty("CDOTA_Ability_Meepo_DividedWeStand", "m_nWhichDividedWeStand") + 1)
+                end
             else
                 heroInfo.meepoNumber = -1
                 illusionCheck = heroInfo.illusion
@@ -393,11 +476,11 @@ function CalculateTechiesInformation()
                 if heroInfoPanel[uniqueIdentifier] == nil then
                     bombInformationArray.HeroDamage[uniqueIdentifier] = 0
                     heroInfoPanel[uniqueIdentifier] = {}
-                    if playerIconLocation < 5 then
+                    if me.team == LuaEntity.TEAM_DIRE then
                         xIconOrigin = 0.273958
                         xTextOrigin = 0.2842705
                         playerOffset = 0
-                    elseif playerIconLocation > 4 then
+                    elseif me.team == LuaEntity.TEAM_RADIANT then
                         xIconOrigin = 0.5546875
                         xTextOrigin = 0.565
                         playerOffset = 5
@@ -428,10 +511,35 @@ function CalculateTechiesInformation()
                         heroInfoPanel[uniqueIdentifier].sentryIcon = EasyCreateRect(xIconOrigin + xSpacing * (playerIconLocation - playerOffset), 0.0074 + 0.015, 0.0078125, 0.01388, 0x00000095)
                         heroInfoPanel[uniqueIdentifier].sentryIcon.textureId = drawMgr:GetTextureId("NyanUI/other/O_sentry")
                         heroInfoPanel[uniqueIdentifier].sentryIcon.visible = false
+                        if heroIcon[playerIconLocation - playerOffset + 1] == nil then
+                            heroIcon[playerIconLocation - playerOffset + 1] = {}
+                            heroIcon[playerIconLocation - playerOffset + 1].activated = true
+                            heroIcon[playerIconLocation - playerOffset + 1].name = heroInfo.name
+                        end
+                        if clickIcon[playerIconLocation - playerOffset + 1] == nil then 
+                            local x = 0.7369791666666666
+                            local y = 0.008333333333333333
+                            local w = 0.011458333333333333
+                            local h = 0.020370370370370372
+                            local shringOffset = 0.0005
+                            local i = playerIconLocation - playerOffset + 1
+                            clickIcon[i] = {}
+                            clickIcon[i].board = EasyCreateRect(x + i * 0.0145, y, w, h,0x8B008BFF)
+                            clickIcon[i].back = EasyCreateRect(x + shringOffset + i * 0.0145, y + shringOffset * screenRatio, w - 2 * shringOffset, h - 2 * shringOffset * screenRatio, 0x000000FF)
+                            clickIcon[i].mini = EasyCreateRect(x + shringOffset + i * 0.0145, y + shringOffset * screenRatio, w - 2 * shringOffset, h - 2 * shringOffset * screenRatio, 0x000000FF)
+                        end
                     end
                 end
                 ------------------------------------------- CALCULATIONS -------------------------------------------
-
+                if heroIcon[playerIconLocation - playerOffset + 1] ~= nil then
+                    if heroIcon[playerIconLocation - playerOffset + 1].activated == true then
+                        clickIcon[playerIconLocation - playerOffset + 1].back.textureId = drawMgr:GetTextureId("NyanUI/spellicons/doom_bringer_empty1")
+                        clickIcon[playerIconLocation - playerOffset + 1].mini.textureId = drawMgr:GetTextureId("NyanUI/miniheroes/"..heroIcon[playerIconLocation - playerOffset + 1].name:gsub("npc_dota_hero_",""))
+                    else
+                        clickIcon[playerIconLocation - playerOffset + 1].mini.textureId = drawMgr:GetTextureId("NyanUI/spellicons/doom_bringer_empty1")
+                    end    
+                end 
+                
                 if heroInfo.alive then
                     heroInfoPanel[uniqueIdentifier].aliveFlag = 1
 
@@ -507,8 +615,9 @@ function CalculateTechiesInformation()
                     end
                 end
                 if heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired ~= nil then
-
-                    if AllowSelfDetonate   then
+                   
+                    if AllowSelfDetonate and heroInfo.team ~= me.team and heroIcon[playerIconLocation - playerOffset + 1].activated == true then
+                        AutoForceStaff(heroInfo, heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired)
                         CalculateDamage(heroInfo, heroInfoPanel[uniqueIdentifier].numberOfRemoteMineRequired)
                     end
                 end
@@ -516,6 +625,12 @@ function CalculateTechiesInformation()
         end
     end
 
+end
+
+function Aggro(hero)
+    myHero = entityList:GetMyPlayer()
+    myHero:Attack(hero)
+	
 end
 
 function MinesInformationDisplay()
@@ -526,8 +641,9 @@ function MinesInformationDisplay()
             if bombInformationArray.Damage == nil then
                 bombInformationArray.Damage = {}
             end
+		
 
-            if v.name == "npc_dota_techies_remote_mine" and bombInformationArray.Damage[v.handle] == nil then
+            if v.health == 200 and bombInformationArray.Damage[v.handle] == nil then
                     if me:FindItem("item_ultimate_scepter") then
                         bombInformationArray.Damage[v.handle] = 150 * (me:GetAbility(6).level + 1) + 150
                     else
@@ -542,48 +658,182 @@ function MinesInformationDisplay()
                 effect.Visible = {}
             end
             if onScreen then
-                if v.alive then
-                    if effect.Range[v.handle] == nil then
+                if v.alive then    
+                    if not effect.Range[v.handle] then
                         effect.Range[v.handle] = Effect(v,"range_display")
-                        if v.name == "npc_dota_techies_land_mine" and ShowLandMineRange then
+                        if v.health == 100 and ShowLandMineRange then
                             effect.Range[v.handle]:SetVector(1, Vector(200,0,0) )
                         elseif v.name == "npc_dota_techies_stasis_trap" and ShowStatisRange then
                             effect.Range[v.handle]:SetVector(1, Vector(450,0,0) )
-                        elseif v.name == "npc_dota_techies_remote_mine" and ShowRemoteMineRange then
+                        elseif v.health == 200 and ShowRemoteMineRange then
                             effect.Range[v.handle]:SetVector(1, Vector(425,0,0) )
                         end
                     end
-                    if v.visibleToEnemy then
+                    if v.visibleToEnemy then    
                         if not effect.Visible[v.handle] and ShowMineVisibility then
                             effect.Visible[v.handle] = Effect(v,"aura_shivas")
                             effect.Visible[v.handle]:SetVector(1, Vector(0,0,0) )
                         end
+                    else
+                        if  effect.Visible[v.handle] then
+                            effect.Visible[v.handle] = nil
+                            collectgarbage("collect")
+                        end
                     end
                 else
-                    if  effect.Range[v.handle] ~= nil then
+                    if  effect.Range[v.handle] then
                         effect.Range[v.handle] = nil
                         collectgarbage("collect")
                     end
-
                     if  effect.Visible[v.handle] then
                         effect.Visible[v.handle] = nil
                         collectgarbage("collect")
                     end
-                end
-            else
-                if  effect.Range[v.handle] ~= nil then
-                        effect.Range[v.handle] = nil
-                        collectgarbage("collect")
-                end
-                if  effect.Visible[v.handle] then
-                        effect.Visible[v.handle] = nil
-                        collectgarbage("collect")
                 end
             end
         end
     end
 end
 
+function ShowSelectedInformation(selectedUnits)
+    local myPlayer = entityList:GetMyPlayer()
+    local mySelection = myPlayer.selection
+    local landMineCount = 0
+    local statisCount = 0
+    local remoteCount = 0
+    local selectSelf = false
+    if myDrawing[me.handle] == nil then
+        myDrawing[me.handle] = {}
+        
+        myDrawing[me.handle].landMineIcon = EasyCreateRect(0.4921875 + 0.05677083333333333, 0.9064814814814814 , 0.0265625, 0.04814814814814815, 0x00000095)
+        myDrawing[me.handle].landMineIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_land_mine")
+        myDrawing[me.handle].landMineIcon.visible = false
+        myDrawing[me.handle].landMineText = EasyCreateText(0.5057291666666667 + 0.05677083333333333, 0.9592592592592593, -1, "0", F10)
+        myDrawing[me.handle].landMineText.visible = false
+        
+        myDrawing[me.handle].statisIcon = EasyCreateRect(0.4921875 + 0.05677083333333333 * 2, 0.9064814814814814 , 0.0265625, 0.04814814814814815, 0x00000095)
+        myDrawing[me.handle].statisIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_stasis_trap")
+        myDrawing[me.handle].statisIcon.visible = false
+        myDrawing[me.handle].statisText = EasyCreateText(0.5057291666666667 + 0.05677083333333333 * 2, 0.9592592592592593, -1, "0", F10)
+        myDrawing[me.handle].statisText.visible = false
+        
+        myDrawing[me.handle].remoteMineIcon = EasyCreateRect(0.4921875 + 0.05677083333333333 * 3, 0.9064814814814814 , 0.0265625, 0.04814814814814815, 0x00000095)
+        myDrawing[me.handle].remoteMineIcon.textureId = drawMgr:GetTextureId("NyanUI/other/npc_dota_techies_remote_mine")
+        myDrawing[me.handle].remoteMineIcon.visible = false
+        myDrawing[me.handle].remoteMineText = EasyCreateText(0.5057291666666667 + 0.05677083333333333 * 3, 0.9592592592592593, -1, "0", F10)
+        myDrawing[me.handle].remoteMineText.visible = false
+    end
+    
+    
+    for i = 1, #mySelection do
+        if mySelection[i].name == "npc_dota_hero_techies" then
+            selectSelf = true
+        end
+        
+        if mySelection[i].health == 100 then
+            landMineCount = landMineCount + 1
+        end
+        
+        if mySelection[i].name == "npc_dota_techies_stasis_trap" then
+            statisCount = statisCount + 1
+            
+        end
+        
+        if mySelection[i].health == 200 then
+            remoteCount = remoteCount + 1
+        end
+    end
+    if (landMineCount > 0 or statisCount > 0 or remoteCount > 0) and selectSelf == false then
+        myDrawing[me.handle].landMineText.text = tostring(landMineCount)
+        myDrawing[me.handle].statisText.text = tostring(statisCount)
+        myDrawing[me.handle].remoteMineText.text = tostring(remoteCount)
+        myDrawing[me.handle].landMineIcon.visible = true
+        myDrawing[me.handle].landMineText.visible = true
+        myDrawing[me.handle].statisIcon.visible = true
+        myDrawing[me.handle].statisText.visible = true
+        myDrawing[me.handle].remoteMineIcon.visible = true
+        myDrawing[me.handle].remoteMineText.visible = true
+        
+    else
+        myDrawing[me.handle].landMineIcon.visible = false
+        myDrawing[me.handle].landMineText.visible = false
+        myDrawing[me.handle].statisIcon.visible = false
+        myDrawing[me.handle].statisText.visible = false
+        myDrawing[me.handle].remoteMineIcon.visible = false
+        myDrawing[me.handle].remoteMineText.visible = false
+    end
+end
+
+function AutoForceStaff(hero, bombNeeded)
+    if IsKeyDown(18) then
+        if not effect.Range[me.handle] then
+            effect.Range[me.handle] = Effect(me,"range_display")
+        end
+        if not effect.Range[me.handle * 2] then
+            effect.Range[me.handle * 2] = Effect(me,"range_display")
+        end
+        effect.Range[me.handle]:SetVector(1, Vector(800,0,0))
+        effect.Range[me.handle * 2]:SetVector(1, Vector(700,0,0))
+        if hero.visible then
+            local countBomb = 1
+            bombInformationArray.HeroPredictedDamage[hero.handle]  = 0
+            local realHealth = me:FindItem("item_ultimate_scepter") and (bombNeeded * (150 * (me:GetAbility(6).level + 1) + 150)) or (bombNeeded * (150 * (me:GetAbility(6).level + 1)))
+            --local forcedHero = entityList:GetMouseover()
+			local forcedHero = targetFind:GetClosestToMouse(100)
+
+        if forcedHero ~= nil and forcedHero.handle == hero.handle then
+                local predictedX = forcedHero.position.x + (math.cos(forcedHero.rotR) * 600)
+                local predictedY = forcedHero.position.y + (math.sin(forcedHero.rotR) * 600)
+                
+                for j,value in ipairs(mines) do
+                    if value.team == me.team and hero.team ~= me.team and hero.alive and value.alive and value.health == 200 then
+                        local checkPrediction = isHeroInBombRange(predictedX, predictedY, value.position.x, value.position.y)
+                        if checkPrediction and value:GetAbility(1).level == 1 then
+                            bombInformationArray.HeroPredictedDamage[hero.handle] = bombInformationArray.HeroPredictedDamage[hero.handle] + bombInformationArray.Damage[value.handle]
+                            if bombInformationArray.HeroPredictedDamage[hero.handle] >=  realHealth and hero.visible and hero.health > 0 then
+                                local inForceRange = me.GetDistance2D(me, forcedHero) < 800
+                                local inEulRange = me.GetDistance2D(me, forcedHero) < 700
+                                local linkenHero  = forcedHero:IsLinkensProtected()
+                                local forcestaff = me:FindItem("item_force_staff")
+                                local eulScepter = me:FindItem("item_cyclone")
+                                if linkenHero then
+                                    if eulScepter and eulScepter.cd == 0 and me.mana >= eulScepter.manacost and inEulRange then
+                                        me:CastAbility(eulScepter, forcedHero)
+                                        break
+                                    end
+                                else
+                                    if forcestaff and forcestaff.cd == 0 and me.mana >= forcestaff.manacost and inForceRange then
+                                        me:CastAbility(forcestaff, forcedHero)
+                                        break
+                                    end
+                                end
+                            else
+                                countBomb = countBomb + 1
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    else
+        if  effect.Range[me.handle] then
+            effect.Range[me.handle] = nil
+            collectgarbage("collect")
+        end
+        if  effect.Range[me.handle * 2] then
+            effect.Range[me.handle * 2] = nil
+            collectgarbage("collect")
+        end
+    end
+end
+
+function isHeroInBombRange(x, y, center_x, center_y)
+    if (math.pow((x - center_x),2) + math.pow((y - center_y), 2)) < math.pow(425, 2) then
+        return true
+    else
+        return false
+    end
+end
 
 function CalculateDamage(hero, bombNeeded)
     local countBomb = 1
@@ -592,12 +842,12 @@ function CalculateDamage(hero, bombNeeded)
     actualHealth = me:FindItem("item_ultimate_scepter") and (bombNeeded * (150 * (me:GetAbility(6).level + 1) + 150)) or (bombNeeded * (150 * (me:GetAbility(6).level + 1)))
 
     for j,value in ipairs(mines) do
-        if value.team == me.team and hero.team ~= me.team and hero.alive and value.alive and value.name == "npc_dota_techies_remote_mine" then
+        if value.team == me.team and hero.team ~= me.team and hero.alive and value.alive and value.health == 200 then
             check = value.GetDistance2D(value, hero) < 425
             if check and value:GetAbility(1).level == 1 then
                 bombInformationArray.HeroDamage[hero.handle] = bombInformationArray.HeroDamage[hero.handle] + bombInformationArray.Damage[value.handle]
                 hero.bombCountArray[countBomb] = value
-                if bombInformationArray.HeroDamage[hero.handle] >=  actualHealth then
+                if bombInformationArray.HeroDamage[hero.handle] >=  actualHealth and hero.visible and hero.health > 0 then
                     SelfDetonate(hero)
                     break
                 else
@@ -611,7 +861,7 @@ end
 function SelfDetonate(hero)
     for i = 1, #hero.bombCountArray do
         v = hero.bombCountArray[i]
-        if InvulnerableToRemoteMines(hero) == false  then
+        if InvulnerableToRemoteMines(hero) == false  and not IsKeyDown(17) then
             v:CastAbility(v:GetAbility(1))
         end
     end
@@ -630,13 +880,13 @@ function CalculateBombsRequired (hero, bombDamage, alive)
         local y2 = undyingMinPercentAmplified
         local x1 = 200
         local x2 = 750
-    if hero.GetDistance2D(undying, hero) > 750 then
-        undyingPercentAmplified = undyingMinPercentAmplified
-    elseif hero.GetDistance2D(undying, hero) < 200 then
-        undyingPercentAmplified = undyingMaxPercentAmplified
-    else
-        undyingPercentAmplified = y1 +((y2 - y1)/(x2 - x1)) * (hero.GetDistance2D(undying, hero) -x1)
-    end
+        if hero.GetDistance2D(undying, hero) > 750 then
+            undyingPercentAmplified = undyingMinPercentAmplified
+        elseif hero.GetDistance2D(undying, hero) < 200 then
+            undyingPercentAmplified = undyingMaxPercentAmplified
+        else
+            undyingPercentAmplified = y1 +((y2 - y1)/(x2 - x1)) * (hero.GetDistance2D(undying, hero) - x1)
+        end
         extraMagicPercentBlocked = extraMagicPercentBlocked - undyingPercentAmplified
     end
 
@@ -666,6 +916,8 @@ function CalculateBombsRequired (hero, bombDamage, alive)
     ---- Damage Reduction ----
     if hero:DoesHaveModifier("modifier_kunkka_ghost_ship_damage_absorb") and hero.team ~= me.team then
         heroHP = heroHP * 2
+    elseif hero:DoesHaveModifier("modifier_abaddon_borrowed_time_damage_redirect") and hero.team ~= me.team then
+        extraMagicPercentBlocked = extraMagicPercentBlocked + 0.35
     end
 
     if hero:DoesHaveModifier("modifier_wisp_overcharge") and hero.team ~= me.team then
@@ -681,10 +933,10 @@ function CalculateBombsRequired (hero, bombDamage, alive)
         local emberSpiritBlockArray = {50, 200, 350, 500}
         local damageBlocked = emberSpiritBlockArray[hero:GetAbility(3).level]
         local emberPercentageBlocked = hero.magicDmgResist
-        emberPercentageBlocked = emberPercentageBlocked + wispPercentBlocked - wispPercentBlocked * emberPercentageBlocked
+        emberPercentageBlocked = emberPercentageBlocked + extraMagicPercentBlocked - extraMagicPercentBlocked * emberPercentageBlocked
         heroHP = heroHP + damageBlocked * (1 - emberPercentageBlocked)
     end
-    if hero.name == "npc_dota_hero_spectre" and hero.team ~= me.team then
+    if hero.name == "npc_dota_hero_spectre" and hero.team ~= me.team and hero:GetAbility(3).level ~= 0 then
         local spectreBlockArray = {0.10, 0.14, 0.18, 0.22}
         local percentageBlocked = spectreBlockArray[hero:GetAbility(3).level]
         extraMagicPercentBlocked = extraMagicPercentBlocked + percentageBlocked
@@ -902,10 +1154,14 @@ function GameClose()
     upRemoteMine = false
     upSuicide = false
     effect = {}
+    heroIcon = {}
+    clickIcon = {}
+    bombCountArray = {}
+    bombInformationArray = {}
+    myDrawing = {}
     collectgarbage("collect")
 end
 
 script:RegisterEvent(EVENT_TICK,Tick)
 script:RegisterEvent(EVENT_CLOSE,GameClose)
 script:RegisterEvent(EVENT_KEY,Key)
-
